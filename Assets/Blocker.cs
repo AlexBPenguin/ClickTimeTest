@@ -72,7 +72,20 @@ public class Blocker : MonoBehaviour
     //Posutre Bar References
     public PostureBars postureBars;
 
-    
+    //camera shake references
+    public CameraShakeScript cameraShakeScript;
+    //enemy shake references
+    public EnemyShakeScript enemyShakeScript;
+
+    //material swap
+    public SpriteRenderer spriteRenderer;
+    public Material flashMaterial;
+    private Material originalMaterial;
+    private Color currentColor;
+    public float flashDuration;
+    private Coroutine flashRoutine;
+
+
     public int deflectCount;
     public int blockTryCount;
 
@@ -139,7 +152,10 @@ public class Blocker : MonoBehaviour
         startSize = enemySprite.transform.localScale;
         smallestSize = enemySprite.transform.localScale / 2;
         largestSize = enemySprite.transform.localScale * 1.3f;
-        
+
+        //Material stuff
+        originalMaterial = spriteRenderer.material;
+
         //health bar stuff
         playerHealth = playerMaxHealth;
         healthBars.SetMaxPlayerHealth(playerMaxHealth);
@@ -405,6 +421,13 @@ public class Blocker : MonoBehaviour
             deflected = true;
             Invoke("DeflectedTimer", 0.25f);
 
+            //camera shake
+            //cameraShakeScript.shakeIntensity = 1.05f;
+            //cameraShakeScript.shakeTime = 0.08f;
+            //cameraShakeScript.ShakeCamera();
+
+            //shake enemy
+            enemyShakeScript.ShakeMe();
 
             atkSoundDeflect.Play();
             streamId = AndroidNativeAudio.play(soundFourId);
@@ -432,6 +455,10 @@ public class Blocker : MonoBehaviour
             {
                 playerPostureCount += 2;
                 postureBars.SetPlayerPosture(playerPostureCount);
+                //camera shake
+                cameraShakeScript.shakeIntensity = 1.08f;
+                cameraShakeScript.shakeTime = 0.125f;
+                cameraShakeScript.ShakeCamera();
             }
             
             deflectWindowTime = 0.225f;
@@ -462,11 +489,50 @@ public class Blocker : MonoBehaviour
 
             playerPostureCount += 2;
             postureBars.SetPlayerPosture(playerPostureCount);
+
+            //camera shake
+            cameraShakeScript.shakeIntensity = 1.08f;
+            cameraShakeScript.shakeTime = 0.125f;
+            cameraShakeScript.ShakeCamera();
+
             blockOnTime = false;
         }
 
 
 
+    }
+
+    //enemy flash
+    public void Flash()
+    {
+        // If the flashRoutine is not null, then it is currently running.
+        if (flashRoutine != null)
+        {
+            // In this case, we should stop it first.
+            // Multiple FlashRoutines the same time would cause bugs.
+            StopCoroutine(flashRoutine);
+        }
+
+        // Start the Coroutine, and store the reference for it.
+        flashRoutine = StartCoroutine(FlashRoutine());
+    }
+
+    private IEnumerator FlashRoutine()
+    {
+        // Swap to the flashMaterial.
+        currentColor = spriteRenderer.color;
+        spriteRenderer.color = Color.white;
+        spriteRenderer.material = flashMaterial;
+
+        // Pause the execution of this function for "duration" seconds.
+        yield return new WaitForSeconds(flashDuration);
+
+        // After the pause, swap back to the original material.
+        spriteRenderer.color = currentColor;
+        spriteRenderer.material = originalMaterial;
+
+        // Set the routine to null, signaling that it's finished.
+        flashRoutine = null;
     }
 
     private IEnumerator ResetIsClickedAfterDelay()
@@ -641,6 +707,11 @@ public class Blocker : MonoBehaviour
         //midAttack = false;
         enemyHealth--;
         healthBars.SetHealth(enemyHealth);
+
+        //enemy shake
+        enemyShakeScript.ShakeMe();
+
+
         //Invoke("ResetAtkRest", 0.15f);
         Invoke("ResetAtkRest", playerAtkDelay);
 
@@ -682,7 +753,10 @@ public class Blocker : MonoBehaviour
             }
 
         }
-       //*/
+
+        //enemy sprite flash
+        Flash();
+        //*/
     }
 
     private void PlayerStanceReset()
@@ -1050,6 +1124,12 @@ public class Blocker : MonoBehaviour
             playerPostureCount += 2;
             postureBars.SetPlayerPosture(playerPostureCount);
             playerHealth--;
+
+            //camera shake
+            cameraShakeScript.shakeIntensity = 1.25f;
+            cameraShakeScript.shakeTime = 0.2f;
+            cameraShakeScript.ShakeCamera();
+
             healthBars.SetPlayerHealth(playerHealth);
             if (!tookDmg)
             {
