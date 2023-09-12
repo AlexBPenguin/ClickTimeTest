@@ -72,6 +72,10 @@ public class Blocker : MonoBehaviour
     //Posutre Bar References
     public PostureBars postureBars;
 
+    //Display References
+    public EnemyDisplay enemyDisplay;
+
+
     //camera shake references
     public CameraShakeScript cameraShakeScript;
     //enemy shake references
@@ -157,15 +161,19 @@ public class Blocker : MonoBehaviour
         originalMaterial = spriteRenderer.material;
 
         //health bar stuff
+        enemyHealth = enemyDisplay.enemy.health;
+        
+        //old
         playerHealth = playerMaxHealth;
         healthBars.SetMaxPlayerHealth(playerMaxHealth);
-        enemyHealth = enemyMaxHealth;
-        healthBars.SetMaxHealth(enemyMaxHealth);
+        //enemyHealth = enemyMaxHealth;
+        //healthBars.SetMaxHealth(enemyMaxHealth);
 
         //posture bar stuff
-        postureBars.SetMaxEnemyPosture(enemyMaxPosture);
+        //postureBars.SetMaxEnemyPosture(enemyMaxPosture);
         postureBars.SetMaxPlayerPosture(playerMaxPosture);
         
+
         canMouseInput = true;
         deflectCount = 0;
         AndroidNativeAudio.makePool();
@@ -229,12 +237,15 @@ public class Blocker : MonoBehaviour
             Invoke(nameof(EnableButtons), 1);
         }
 
-        if(postureCount > enemyMaxPosture)
+        if(postureCount > enemyDisplay.enemy.posture)
         {
             enemyHealth -= 10;
-            healthBars.SetHealth(enemyHealth);
+            //healthBars.SetHealth(enemyHealth);
+            enemyDisplay.SetHealth(enemyHealth);
             postureCount = 0;
-            postureBars.SetEnemyPosture(postureCount);
+            //postureBars.SetEnemyPosture(postureCount);
+            enemyDisplay.SetPosture(postureCount);
+
         }
 
         //only regain posture when enemy is in neutral stance and enemy has more than zero posture
@@ -245,14 +256,16 @@ public class Blocker : MonoBehaviour
             if (enemyPostureTimer <= 0)
             {
                 postureCount--;
-                postureBars.SetEnemyPosture(postureCount);
+                // postureBars.SetEnemyPosture(postureCount);
+                enemyDisplay.SetPosture(postureCount);
                 postureMultiplier = enemyHealth / 120; 
                 enemyPostureTimer = 1f - postureMultiplier; // Reset the timer
 
                 if (postureCount <= 0)
                 {
                     postureCount = 0;
-                    postureBars.SetEnemyPosture(postureCount);
+                    //postureBars.SetEnemyPosture(postureCount);
+                    enemyDisplay.SetPosture(postureCount);
                     enemyPostureEmpty = true;
                 }
             }
@@ -387,7 +400,8 @@ public class Blocker : MonoBehaviour
         {
             Debug.Log("MikiriCounter");
             postureCount += 2;
-            postureBars.SetEnemyPosture(postureCount);
+            //postureBars.SetEnemyPosture(postureCount);
+            enemyDisplay.SetPosture(postureCount);
             swipedUp = false;
             swipedUpOnTime = false;
 
@@ -442,7 +456,8 @@ public class Blocker : MonoBehaviour
                 Invoke("DeflectArtReset", 0.5f);
 
                 postureCount++;
-                postureBars.SetEnemyPosture(postureCount);
+                //postureBars.SetEnemyPosture(postureCount);
+                enemyDisplay.SetPosture(postureCount);
 
                 if (playerPostureCount != playerMaxPosture)
                 {
@@ -706,7 +721,8 @@ public class Blocker : MonoBehaviour
         streamId = AndroidNativeAudio.play(soundSixId);
         //midAttack = false;
         enemyHealth--;
-        healthBars.SetHealth(enemyHealth);
+        enemyDisplay.SetHealth(enemyHealth);
+        //healthBars.SetHealth(enemyHealth);
 
         //enemy shake
         enemyShakeScript.ShakeMe();
