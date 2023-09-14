@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class CombatScript : MonoBehaviour
 {
+    //this script handles everything combat
 
     public EnemyScriptableObject enemy;
     // Start is called before the first frame update

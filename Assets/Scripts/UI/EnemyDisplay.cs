@@ -6,6 +6,8 @@ using TMPro;
 
 public class EnemyDisplay : MonoBehaviour
 {
+    //This script displays enemy health and posture bars, enemy name, and the enemy sprite
+
     public EnemyScriptableObject enemy;
 
     //Bars
@@ -15,9 +17,7 @@ public class EnemyDisplay : MonoBehaviour
     //Text
     public TMP_Text nameText;
 
-    //Sprite
-    public SpriteRenderer sprite;
-
+    //set health and posture bars to max and set name text to enemy name
     private void Start()
     {
         //Bars
@@ -28,7 +28,7 @@ public class EnemyDisplay : MonoBehaviour
         nameText.text = enemy.name;
 
         //Sprite
-        sprite.sprite = enemy.neutralSprite;
+        //sprite.sprite = enemy.neutralSprite;
     }
 
     //Health

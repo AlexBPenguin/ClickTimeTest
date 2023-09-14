@@ -21,17 +21,7 @@ public class Blocker : MonoBehaviour
     public GameObject shieldBlockNtrl;
 
     public GameObject enemySprite;
-    public Vector3 enemySpriteCurrentScale;
-    public Vector3 startSize;
-    public Vector3 smallestSize;
-    public Vector3 largestSize;
-    public float pulseSize;
-    public float returnSpeed;
-    public float shrinkSpeed;
-    public float expandSpeed;
-    public bool enemyAtkPulse;
     public bool midCombo;
-    public bool pauseShrink;
 
     public GameObject atkObject;
 
@@ -52,29 +42,21 @@ public class Blocker : MonoBehaviour
     public GameObject atkCombo3;
     public GameObject atkCombo4;
     public Transform spawner;
-    public TMP_Text deflectCountText;
-    public TMP_Text postureText;
-    public TMP_Text playerPostureText;
-    public TMP_Text playerHealthText;
-    public TMP_Text enemyHealthText;
 
+    //Display stuff
     public int enemyHealth;
-    public int enemyMaxHealth = 100;
     public int playerHealth;
-    public int playerMaxHealth;
     public int playerPostureCount;
-    public int playerMaxPosture;
-    //public int enemyMaxPosture;
-    public int postureCount;
-    public int enemyMaxPosture;
-    //Health Bar Referernces
-    public HealthBars healthBars;
-    //Posutre Bar References
-    public PostureBars postureBars;
+    public int enemyPostureCount;
 
     //Display References
     public EnemyDisplay enemyDisplay;
+    public PlayerDisplay playerDisplay;
 
+    //EnemySpriteReferences
+    public EnemySpriteHandler enemySpriteHandler;
+    //PlayerSpriteReference
+    public PlayerSpriteHandler playerSpriteHandler;
 
     //camera shake references
     public CameraShakeScript cameraShakeScript;
@@ -103,6 +85,7 @@ public class Blocker : MonoBehaviour
     public bool atkCommit;
     public bool blockInputDelay;
     public float blockInputDelayTime;
+    public bool blockButtonUpDuringInputDelay;
 
     public float deflectWindowTime = 0.5f;
     public float mouseInputTime;
@@ -153,25 +136,12 @@ public class Blocker : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        startSize = enemySprite.transform.localScale;
-        smallestSize = enemySprite.transform.localScale / 2;
-        largestSize = enemySprite.transform.localScale * 1.3f;
-
         //Material stuff
         originalMaterial = spriteRenderer.material;
 
         //health bar stuff
         enemyHealth = enemyDisplay.enemy.health;
-        
-        //old
-        playerHealth = playerMaxHealth;
-        healthBars.SetMaxPlayerHealth(playerMaxHealth);
-        //enemyHealth = enemyMaxHealth;
-        //healthBars.SetMaxHealth(enemyMaxHealth);
-
-        //posture bar stuff
-        //postureBars.SetMaxEnemyPosture(enemyMaxPosture);
-        postureBars.SetMaxPlayerPosture(playerMaxPosture);
+        playerHealth = playerDisplay.playerMaxHealth;
         
 
         canMouseInput = true;
@@ -195,56 +165,30 @@ public class Blocker : MonoBehaviour
         }
 
 
-        if (!midCombo && !enemyAtkPulse && !pauseShrink)
+        if (!midCombo) //if enemy is not in the middle of an atk combo
         {
             //return to orignal size
-            enemySprite.transform.localScale = Vector3.Lerp(enemySprite.transform.localScale, startSize, Time.deltaTime * returnSpeed);
+            enemySpriteHandler.ReturnToOriginalSpriteSize();
         }
-        
-
-        else if(!enemyAtkPulse && !pauseShrink)
+        else
         {
             //shrink before attacking
-            enemySprite.transform.localScale = Vector3.Lerp(enemySprite.transform.localScale, smallestSize, Time.deltaTime * shrinkSpeed);
+            enemySpriteHandler.ShrinkSpriteSize();
         }
-
-        if (enemyAtkPulse && !pauseShrink)
-        {
-            //quickly expand to demonstrate attack
-            enemySprite.transform.localScale = Vector3.Lerp(enemySprite.transform.localScale, largestSize, Time.deltaTime * expandSpeed);
-        }
-
-        //show scale in inspector for debugging purposes
-        enemySpriteCurrentScale = enemySprite.transform.localScale;
-
-        if(enemySprite.transform.localScale.y >= largestSize.y - 0.01f)
-        {
-            Debug.Log("Fully Expanded");
-            enemyAtkPulse = false;
-        }
-
-
-
-        postureText.text = "ESP: " + postureCount;
-        playerPostureText.text = "SP: " + playerPostureCount;
-        playerHealthText.text = "HP: " + playerHealth;
-        enemyHealthText.text = "EHP: " + enemyHealth;
 
         //stun player when player posture bar is full
-        if(playerPostureCount > playerMaxPosture)
+        if(playerPostureCount > playerDisplay.playerMaxPosture)
         {
             disableButtons = true;
             Invoke(nameof(EnableButtons), 1);
         }
 
-        if(postureCount > enemyDisplay.enemy.posture)
+        if(enemyPostureCount > enemyDisplay.enemy.posture)
         {
             enemyHealth -= 10;
-            //healthBars.SetHealth(enemyHealth);
             enemyDisplay.SetHealth(enemyHealth);
-            postureCount = 0;
-            //postureBars.SetEnemyPosture(postureCount);
-            enemyDisplay.SetPosture(postureCount);
+            enemyPostureCount = 0;
+            enemyDisplay.SetPosture(enemyPostureCount);
 
         }
 
@@ -255,22 +199,22 @@ public class Blocker : MonoBehaviour
 
             if (enemyPostureTimer <= 0)
             {
-                postureCount--;
+                enemyPostureCount--;
                 // postureBars.SetEnemyPosture(postureCount);
-                enemyDisplay.SetPosture(postureCount);
+                enemyDisplay.SetPosture(enemyPostureCount);
                 postureMultiplier = enemyHealth / 120; 
                 enemyPostureTimer = 1f - postureMultiplier; // Reset the timer
 
-                if (postureCount <= 0)
+                if (enemyPostureCount <= 0)
                 {
-                    postureCount = 0;
+                    enemyPostureCount = 0;
                     //postureBars.SetEnemyPosture(postureCount);
-                    enemyDisplay.SetPosture(postureCount);
+                    enemyDisplay.SetPosture(enemyPostureCount);
                     enemyPostureEmpty = true;
                 }
             }
         }
-        if(postureCount > 0)
+        if(enemyPostureCount > 0)
         {
             enemyPostureEmpty = false;
         }
@@ -284,7 +228,8 @@ public class Blocker : MonoBehaviour
             if (playerPostureTimer <= 0)
             {
                 playerPostureCount--;
-                postureBars.SetPlayerPosture(playerPostureCount);
+                //postureBars.SetPlayerPosture(playerPostureCount);
+                playerDisplay.SetPosture(playerPostureCount);
                 if (holdingBlock && enemyNeutralStance)
                 {
                     playerPostureTimer = 0.75f;
@@ -298,7 +243,8 @@ public class Blocker : MonoBehaviour
                 if (playerPostureCount <= 0)
                 {
                     playerPostureCount = 0;
-                    postureBars.SetPlayerPosture(playerPostureCount);
+                    //postureBars.SetPlayerPosture(playerPostureCount);
+                    playerDisplay.SetPosture(playerPostureCount);
                     playerNeutralStance =false;
                     
                 }
@@ -399,9 +345,9 @@ public class Blocker : MonoBehaviour
         if(swipedUp && swipedUpOnTime)
         {
             Debug.Log("MikiriCounter");
-            postureCount += 2;
+            enemyPostureCount += 2;
             //postureBars.SetEnemyPosture(postureCount);
-            enemyDisplay.SetPosture(postureCount);
+            enemyDisplay.SetPosture(enemyPostureCount);
             swipedUp = false;
             swipedUpOnTime = false;
 
@@ -409,7 +355,7 @@ public class Blocker : MonoBehaviour
             Debug.Log("Deflected");
             CancelInvoke("DeflectedTimer");
             deflected = true;
-            Invoke("DeflectedTimer", 0.25f);
+            Invoke("DeflectedTimer", 0.225f);
 
             atkSoundDeflect.Play();
             streamId = AndroidNativeAudio.play(soundFourId);
@@ -419,7 +365,6 @@ public class Blocker : MonoBehaviour
             StopCoroutine(ResetMouseButtonAfterDelay());
             canMouseInput = true;
             deflectCount++;
-            deflectCountText.text = "Deflect: " + deflectCount.ToString();
             block = false;
             blockOnTime = false;
             blockTryCount = 0;
@@ -433,7 +378,7 @@ public class Blocker : MonoBehaviour
             Debug.Log("Deflected");
             CancelInvoke("DeflectedTimer");
             deflected = true;
-            Invoke("DeflectedTimer", 0.25f);
+            Invoke("DeflectedTimer", 0.225f);
 
             //camera shake
             //cameraShakeScript.shakeIntensity = 1.05f;
@@ -448,28 +393,22 @@ public class Blocker : MonoBehaviour
             //Debug.Log("Delfect!");
             if (!spam)
             {
-                //set sword sprite art to deflect
-                swordBlock1.GetComponent<SpriteRenderer>().enabled = false;
-                swordBlock2.GetComponent<SpriteRenderer>().enabled = true;
 
-                CancelInvoke("DeflectArtReset");
-                Invoke("DeflectArtReset", 0.5f);
+                enemyPostureCount++;
+                enemyDisplay.SetPosture(enemyPostureCount);
 
-                postureCount++;
-                //postureBars.SetEnemyPosture(postureCount);
-                enemyDisplay.SetPosture(postureCount);
-
-                if (playerPostureCount != playerMaxPosture)
+                if (playerPostureCount != playerDisplay.playerMaxPosture)
                 {
                     playerPostureCount++;
-                    postureBars.SetPlayerPosture(playerPostureCount);
+                    playerDisplay.SetPosture(playerPostureCount);
                 }
                 
             }
             else
             {
                 playerPostureCount += 2;
-                postureBars.SetPlayerPosture(playerPostureCount);
+                playerDisplay.SetPosture(playerPostureCount);
+
                 //camera shake
                 cameraShakeScript.shakeIntensity = 1.08f;
                 cameraShakeScript.shakeTime = 0.125f;
@@ -481,7 +420,6 @@ public class Blocker : MonoBehaviour
             StopCoroutine(ResetMouseButtonAfterDelay());
             canMouseInput = true;
             deflectCount++;
-            deflectCountText.text = "Deflect: " + deflectCount.ToString();
             block = false;
             blockOnTime = false;
             blockTryCount = 0;
@@ -500,10 +438,10 @@ public class Blocker : MonoBehaviour
 
             CancelInvoke("DeflectedTimer");
             deflected = true;
-            Invoke("DeflectedTimer", 0.25f);
+            Invoke("DeflectedTimer", 0.225f);
 
             playerPostureCount += 2;
-            postureBars.SetPlayerPosture(playerPostureCount);
+            playerDisplay.SetPosture(playerPostureCount);
 
             //camera shake
             cameraShakeScript.shakeIntensity = 1.08f;
@@ -570,24 +508,26 @@ public class Blocker : MonoBehaviour
             Debug.Log("startmousepos: " + startMousePos);
 
 
-            //if (!atkRest && !tookDmg)
+            //if player is not commited to attack...
             if (!atkCommit && !tookDmg)
             {
+                Debug.Log("Block went through");
                 atkRest = false;
-                swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
+                //swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
                 CancelInvoke("PlayerAttack");
 
                 //set sword block sprite art
-                //swordBlock2.GetComponent<SpriteRenderer>().enabled = false;
-                //swordNtrl.GetComponent<SpriteRenderer>().enabled = false;
-                shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = false;
-                swordBlock1.GetComponent<SpriteRenderer>().enabled = true;
+                playerSpriteHandler.BlockShieldArt();
+                playerSpriteHandler.NeutralSwordArt();
 
                 //temporary fix for block input delay making holding block equal to true without putting block button back up (since it's on a delay)
-                if (!blockInputDelay)
+                if (!blockButtonUpDuringInputDelay)
                 {
-                    //holding block
                     holdingBlock = true;
+                }
+                else
+                {
+                    blockButtonUpDuringInputDelay = false;
                 }
                 
 
@@ -631,6 +571,7 @@ public class Blocker : MonoBehaviour
 
             else if (atkRest || tookDmg)
             {
+                Debug.Log("BlockInputDelay");
                 Invoke("BlockInputDelay", blockInputDelayTime);
                 blockInputDelay = true;
             }
@@ -657,16 +598,19 @@ public class Blocker : MonoBehaviour
 
         Debug.Log("BlockButtonUp1");
         holdingBlock = false;
+        if (blockInputDelay)
+        {
+            blockButtonUpDuringInputDelay = true;
+        }
 
         //i can lift button up before a deflection is counted
+        //if (!block && !atkRest)
         if (!block && !deflected && !atkRest)
         {
             Debug.Log("blockbuttonup2");
             CancelInvoke("DeflectArtReset");
-            //swordBlock2.GetComponent<SpriteRenderer>().enabled = false;
-            swordBlock1.GetComponent<SpriteRenderer>().enabled = false;
-            //swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
-            shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
+            playerSpriteHandler.NeutralSwordArt();
+            playerSpriteHandler.NeutralShieldArt();
         }
     }
 
@@ -689,11 +633,7 @@ public class Blocker : MonoBehaviour
             if ((!atkRest && !tookDmg))
             {
                 CancelInvoke("DeflectArtReset");
-                //switch sword sprites
-                swordBlock2.GetComponent<SpriteRenderer>().enabled = false;
-                swordBlock1.GetComponent<SpriteRenderer>().enabled = false;
-                swordNtrl.GetComponent<SpriteRenderer>().enabled = false;
-                swordAtk1.GetComponent<SpriteRenderer>().enabled = true;
+                playerSpriteHandler.PreAttackArt();
 
                 CancelInvoke("PlayerAttack");
                 Invoke("PlayerAttack", playerAtkDelay);
@@ -714,15 +654,13 @@ public class Blocker : MonoBehaviour
         atkCommit = true;
 
         //switch sword sprites
-        swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
-        swordAtk2.GetComponent<SpriteRenderer>().enabled = true;
+        playerSpriteHandler.PostAttackArt();
 
         atkPlayerSound.Play();
         streamId = AndroidNativeAudio.play(soundSixId);
         //midAttack = false;
         enemyHealth--;
         enemyDisplay.SetHealth(enemyHealth);
-        //healthBars.SetHealth(enemyHealth);
 
         //enemy shake
         enemyShakeScript.ShakeMe();
@@ -754,17 +692,15 @@ public class Blocker : MonoBehaviour
 
             if(retaliationAtkChance == 0)
             {
-                //enemySprite.GetComponent<MeshRenderer>().material.color = Color.green;
                 enemySprite.GetComponent<SpriteRenderer>().material.color = Color.green;
-                enemySprite.transform.localScale = startSize * pulseSize;
+                enemySpriteHandler.PulseSprite();
                 Instantiate(relatiate1, spawner.transform.position, Quaternion.identity);
             }
 
             else
             {
-                //enemySprite.GetComponent<MeshRenderer>().material.color = Color.gray;
                 enemySprite.GetComponent<SpriteRenderer>().material.color = Color.gray;
-                enemySprite.transform.localScale = startSize * pulseSize;
+                enemySpriteHandler.PulseSprite();
                 Instantiate(relatiate2Up, spawner.transform.position, Quaternion.identity);
             }
 
@@ -791,6 +727,7 @@ public class Blocker : MonoBehaviour
         blockInputDelay = false;
     }
 
+    //complete an attack swing
     private void ResetAtkRest()
     {
         Debug.Log("ResetAtkRest");
@@ -798,11 +735,8 @@ public class Blocker : MonoBehaviour
         atkCommit = false;
 
         //reset sword pixel art
-        swordBlock2.GetComponent<SpriteRenderer>().enabled = false;
-        swordBlock1.GetComponent<SpriteRenderer>().enabled = false;
-        swordAtk2.GetComponent<SpriteRenderer>().enabled = false;
-        swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
-        shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
+        //playerSpriteHandler.NeutralShieldArt();
+        playerSpriteHandler.NeutralSwordArt();
 
         atkRest = false;
         if (atkInputDelay)
@@ -822,19 +756,17 @@ public class Blocker : MonoBehaviour
     private void ResetBlock()
     {
         //resets twice?
-        Debug.Log("ResetBlock1");
+        //Debug.Log("ResetBlock1");
 
         //rest back to swordntrl sprite art
         //if (!holdingBlock && !deflected && !atkRest)
-        if (!holdingBlock && !deflected && !atkRest)
+        if (!holdingBlock && !atkRest)
         {
+            //for future change, set current sprite to current sprite and then can just disable it here instead of ever sprite
+
             Debug.Log("ResetBlock2");
-            //CancelInvoke("ResetBlockArt"); //should just cancel sword block 2 below
-            swordBlock2.GetComponent<SpriteRenderer>().enabled = false;
-            swordBlock1.GetComponent<SpriteRenderer>().enabled = false;
-            swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
-            swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
-            shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
+            playerSpriteHandler.NeutralSwordArt();
+            playerSpriteHandler.NeutralShieldArt();
         }
         else if (holdingBlock)
         {
@@ -867,21 +799,19 @@ public class Blocker : MonoBehaviour
 
     private void DeflectArtReset()
     {
-        
-        swordBlock2.GetComponent<SpriteRenderer>().enabled = false;
-
-        //swordBlock1.GetComponent<SpriteRenderer>().enabled = false;//update for shield
         if (block || holdingBlock)
         {
             Debug.Log("DeflectArtResetBlock1");
-            swordBlock1.GetComponent<SpriteRenderer>().enabled = true;
+            //swordBlock1.GetComponent<SpriteRenderer>().enabled = true;
             //shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
         }
         else
         {
             Debug.Log("DeflectArtResetNTRL");
-            swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
-            shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
+            //swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
+            //shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
+            playerSpriteHandler.NeutralShieldArt();
+            playerSpriteHandler.NeutralSwordArt();
         }
     }
 
@@ -891,10 +821,8 @@ public class Blocker : MonoBehaviour
         if (!holdingBlock)
         {
             Debug.Log("ResetBlockArt");
-            swordBlock2.GetComponent<SpriteRenderer>().enabled = false;
-            swordBlock1.GetComponent<SpriteRenderer>().enabled = false;
-            swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
-            shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
+            playerSpriteHandler.NeutralShieldArt();
+            playerSpriteHandler.NeutralSwordArt();
         }
     }
 
@@ -938,7 +866,8 @@ public class Blocker : MonoBehaviour
     {
         disableButtons = false;
         playerPostureCount = 0;
-        postureBars.SetPlayerPosture(playerPostureCount);
+        //postureBars.SetPlayerPosture(playerPostureCount);
+        playerDisplay.SetPosture(playerPostureCount);
     }
 
     private void StartPoseStuff()
@@ -968,47 +897,38 @@ public class Blocker : MonoBehaviour
         if (other.gameObject.CompareTag("StartPose"))
         {
             //Debug.Log("StartPose");
-            //enemySprite.GetComponent<MeshRenderer>().material.color = Color.red;
             enemySprite.GetComponent<SpriteRenderer>().material.color = Color.red;
             //atkStartSound.Play();
             //streamId = AndroidNativeAudio.play(soundThreeId);
             StartPoseStuff();
-
-            //enemySprite.transform.localScale = startSize * pulseSize;
         }
 
         else if (other.gameObject.CompareTag("StartPoseTwo"))
         {
             //Debug.Log("StartPoseTwo");
-            //enemySprite.GetComponent<MeshRenderer>().material.color = Color.blue;
             enemySprite.GetComponent<SpriteRenderer>().material.color = new Color(0.25f, 0.65f, 0.85f);
             //atkStartSound.Play();
             //streamId = AndroidNativeAudio.play(soundThreeId);
             StartPoseStuff();
 
-            //enemySprite.transform.localScale = startSize * pulseSize;
         }
 
         else if (other.gameObject.CompareTag("StartPoseThree"))
         {
-            //enemySprite.GetComponent<MeshRenderer>().material.color = Color.black;
             enemySprite.GetComponent<SpriteRenderer>().material.color = new Color(1, 0.3f, 0.5f);//dragon pink
             //atkStartSound.Play();
             //streamId = AndroidNativeAudio.play(soundThreeId);
             StartPoseStuff();
 
-            //enemySprite.transform.localScale = startSize * pulseSize;
         }
 
         else if (other.gameObject.CompareTag("StartPoseFour"))
         {
-            //enemySprite.GetComponent<MeshRenderer>().material.color = Color.yellow;
             enemySprite.GetComponent<SpriteRenderer>().material.color = new Color(0, 1, 0.13f);
             //atkStartSound.Play();
             //streamId = AndroidNativeAudio.play(soundThreeId);
             StartPoseStuff();
 
-            //enemySprite.transform.localScale = startSize * pulseSize;
         }
 
         //swiping up stuff
@@ -1018,8 +938,6 @@ public class Blocker : MonoBehaviour
             Debug.Log("Retaliate2Up");
 
             CancelInvoke("PlayerAttack");
-            //swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
-            //swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
             PlayerStanceReset();
             streamId = AndroidNativeAudio.play(soundId);
             atkSound.Play();
@@ -1034,43 +952,29 @@ public class Blocker : MonoBehaviour
             
             //cancel player attack
             CancelInvoke("PlayerAttack");
-            //swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
-            //swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
 
             PlayerStanceReset();
             streamId = AndroidNativeAudio.play(soundId);
             atkSound.Play();
             blockOnTime = true;
-
-            //enemyAtkPulse = true;
-            
-
-            //new stuff added for enemy pause right before attack as a sort of tell
-            //pauseShrink = true;
             //Invoke("onTriggerFunction", 0.2f);
         }
         else
         {   
             //cancel player attack
             CancelInvoke("PlayerAttack");
-            //swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
-            //swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
 
             PlayerStanceReset();
             streamId = AndroidNativeAudio.play(soundTwoId);
             atkSoundWeak.Play();
             blockOnTime = true;
-
-            //enemyAtkPulse = true;
         }
 
         //pulse to demonstrate attack/add some "juice"
-        enemySprite.transform.localScale = startSize * pulseSize;
+        enemySpriteHandler.PulseSprite();
 
-        //a stab at making an "animation" that better displays when an enemy attack will land/gives player something to react to, even though it might be really fast, but at least bot instant like it is
-        //enemyAtkPulse = true;
-
-        CancelInvoke("ResetBlock");
+        //why is this happening again?
+        //CancelInvoke("ResetBlock");
 
         
 
@@ -1085,18 +989,14 @@ public class Blocker : MonoBehaviour
 
         //cancel player attack
         CancelInvoke("PlayerAttack");
-        //swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
-        //swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
 
         PlayerStanceReset();
         streamId = AndroidNativeAudio.play(soundId);
         atkSound.Play();
         blockOnTime = true;
 
-        //enemyAtkPulse = true;
 
-        pauseShrink = false;
-        enemySprite.transform.localScale = startSize * pulseSize;
+        enemySpriteHandler.PulseSprite();
     }//not in use
 
     private void OnTriggerExit(Collider other)
@@ -1109,7 +1009,6 @@ public class Blocker : MonoBehaviour
         {
             midCombo = false;//for decrease in size animation
 
-            //enemySprite.GetComponent<MeshRenderer>().material.color = Color.white;
             enemySprite.GetComponent<SpriteRenderer>().material.color = Color.white;
             enemyNeutralStance = true;
 
@@ -1137,16 +1036,21 @@ public class Blocker : MonoBehaviour
 
         if (!deflected && (!other.gameObject.CompareTag("StartPose") && !other.gameObject.CompareTag("StartPoseTwo") && !other.gameObject.CompareTag("StartPoseThree") && !other.gameObject.CompareTag("StartPoseFour")))
         {
+            //take posture damage
             playerPostureCount += 2;
-            postureBars.SetPlayerPosture(playerPostureCount);
+            //postureBars.SetPlayerPosture(playerPostureCount);
+            playerDisplay.SetPosture(playerPostureCount);
+
+            //take health damage
             playerHealth--;
+            playerDisplay.SetHealth(playerHealth);
 
             //camera shake
             cameraShakeScript.shakeIntensity = 1.25f;
             cameraShakeScript.shakeTime = 0.2f;
             cameraShakeScript.ShakeCamera();
 
-            healthBars.SetPlayerHealth(playerHealth);
+
             if (!tookDmg)
             {
                 tookDmg = true;
