@@ -2,25 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using System.Net.NetworkInformation;
 
 public class Blocker : MonoBehaviour
 {
-    public AudioSource atkSound;
-    public AudioSource atkSoundWeak;
-    public AudioSource atkSoundDeflect;
-    public AudioSource atkStartSound;
-    public AudioSource atkPlayerSound;
-    public AudioSource atkSoundBlock;
+    public EnemyScriptableObject enemy;
 
-    //sword sprite art
-    public GameObject swordNtrl;
-    public GameObject swordAtk1;
-    public GameObject swordAtk2;
-    public GameObject swordBlock1;
-    public GameObject swordBlock2;
-    public GameObject shieldBlockNtrl;
-
-    public GameObject enemySprite;
     public bool midCombo;
 
     public GameObject atkObject;
@@ -32,15 +19,8 @@ public class Blocker : MonoBehaviour
     public bool retaliating;
     public int retaliationChance;
     public int retaliationAtkChance;
-    public GameObject relatiate1;
-    public GameObject relatiate2Up;
     public bool swipedUpOnTime;
 
-    public GameObject atkCombo;
-    public GameObject atkCombo1;
-    public GameObject atkCombo2;
-    public GameObject atkCombo3;
-    public GameObject atkCombo4;
     public Transform spawner;
 
     //Display stuff
@@ -71,6 +51,8 @@ public class Blocker : MonoBehaviour
     public float flashDuration;
     private Coroutine flashRoutine;
 
+    //Audio Reference
+    private AudioManager audioManager;
 
     public int deflectCount;
     public int blockTryCount;
@@ -98,12 +80,10 @@ public class Blocker : MonoBehaviour
     public float currentMouseButtonTime;
     public float previousMouseButtonTime;
 
-    int soundId;
-    int soundTwoId;
-    int soundThreeId;
-    int soundFourId;
-    int soundFiveId;
-    int soundSixId;
+    int androidAttackSwitch;
+    int androidPlayerAttack;
+    int androidPlayerBlock;
+    int androidPlayerHit;
     int streamId;
 
     public bool block;
@@ -142,17 +122,19 @@ public class Blocker : MonoBehaviour
         //health bar stuff
         enemyHealth = enemyDisplay.enemy.health;
         playerHealth = playerDisplay.playerMaxHealth;
-        
+
+        //Audio refernce
+        audioManager = FindObjectOfType<AudioManager>();
 
         canMouseInput = true;
         deflectCount = 0;
+
+        //android audio set up
         AndroidNativeAudio.makePool();
-        soundId = AndroidNativeAudio.load("Android Native Audio/Tone Native.wav");
-        soundTwoId = AndroidNativeAudio.load("Android Native Audio/201766__waveplaysfx__tick.wav");
-        soundThreeId = AndroidNativeAudio.load("Android Native Audio/465338__o-toener__zap.ogg");
-        soundFourId = AndroidNativeAudio.load("Android Native Audio/619231__strangehorizon__tiger_sword_13.wav");
-        soundFiveId = AndroidNativeAudio.load("Android Native Audio/19421__awfulthesample__awfultheaudio_watschn2.wav");
-        soundSixId = AndroidNativeAudio.load("Android Native Audio/334169__loudernoises__sword-clash (1).wav");
+        androidAttackSwitch = AndroidNativeAudio.load("Android Native Audio/465338__o-toener__zap.ogg");
+        androidPlayerAttack = AndroidNativeAudio.load("Android Native Audio/334169__loudernoises__sword-clash (1).wav");
+        androidPlayerBlock = AndroidNativeAudio.load("Android Native Audio/500927__sawuare__wood-click-3");
+        androidPlayerHit = AndroidNativeAudio.load("Android Native Audio/HitAudio");
     }
 
     // Update is called once per frame
@@ -200,7 +182,6 @@ public class Blocker : MonoBehaviour
             if (enemyPostureTimer <= 0)
             {
                 enemyPostureCount--;
-                // postureBars.SetEnemyPosture(postureCount);
                 enemyDisplay.SetPosture(enemyPostureCount);
                 postureMultiplier = enemyHealth / 120; 
                 enemyPostureTimer = 1f - postureMultiplier; // Reset the timer
@@ -208,7 +189,6 @@ public class Blocker : MonoBehaviour
                 if (enemyPostureCount <= 0)
                 {
                     enemyPostureCount = 0;
-                    //postureBars.SetEnemyPosture(postureCount);
                     enemyDisplay.SetPosture(enemyPostureCount);
                     enemyPostureEmpty = true;
                 }
@@ -228,7 +208,6 @@ public class Blocker : MonoBehaviour
             if (playerPostureTimer <= 0)
             {
                 playerPostureCount--;
-                //postureBars.SetPlayerPosture(playerPostureCount);
                 playerDisplay.SetPosture(playerPostureCount);
                 if (holdingBlock && enemyNeutralStance)
                 {
@@ -243,7 +222,6 @@ public class Blocker : MonoBehaviour
                 if (playerPostureCount <= 0)
                 {
                     playerPostureCount = 0;
-                    //postureBars.SetPlayerPosture(playerPostureCount);
                     playerDisplay.SetPosture(playerPostureCount);
                     playerNeutralStance =false;
                     
@@ -277,7 +255,7 @@ public class Blocker : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.C))
         {
-            SpawnComboTwo();
+            //SpawnComboTwo();
         }
 
         if (Input.GetMouseButtonDown(0))
@@ -346,7 +324,6 @@ public class Blocker : MonoBehaviour
         {
             Debug.Log("MikiriCounter");
             enemyPostureCount += 2;
-            //postureBars.SetEnemyPosture(postureCount);
             enemyDisplay.SetPosture(enemyPostureCount);
             swipedUp = false;
             swipedUpOnTime = false;
@@ -357,8 +334,8 @@ public class Blocker : MonoBehaviour
             deflected = true;
             Invoke("DeflectedTimer", 0.225f);
 
-            atkSoundDeflect.Play();
-            streamId = AndroidNativeAudio.play(soundFourId);
+            audioManager.Play("Player Deflect");
+            streamId = AndroidNativeAudio.play(androidPlayerBlock);
 
             deflectWindowTime = 0.225f;
             mouseInputTime = 0.1f;
@@ -388,8 +365,8 @@ public class Blocker : MonoBehaviour
             //shake enemy
             enemyShakeScript.ShakeMe();
 
-            atkSoundDeflect.Play();
-            streamId = AndroidNativeAudio.play(soundFourId);
+            audioManager.Play("Player Deflect");
+            streamId = AndroidNativeAudio.play(androidPlayerBlock);
             //Debug.Log("Delfect!");
             if (!spam)
             {
@@ -433,8 +410,8 @@ public class Blocker : MonoBehaviour
         {
             //Debug.Log("HoldBlocking");
 
-            atkSoundBlock.Play();
-            streamId = AndroidNativeAudio.play(soundTwoId);
+            audioManager.Play("Player Block");
+            streamId = AndroidNativeAudio.play(androidPlayerBlock);
 
             CancelInvoke("DeflectedTimer");
             deflected = true;
@@ -513,7 +490,6 @@ public class Blocker : MonoBehaviour
             {
                 Debug.Log("Block went through");
                 atkRest = false;
-                //swordAtk1.GetComponent<SpriteRenderer>().enabled = false;
                 CancelInvoke("PlayerAttack");
 
                 //set sword block sprite art
@@ -656,8 +632,11 @@ public class Blocker : MonoBehaviour
         //switch sword sprites
         playerSpriteHandler.PostAttackArt();
 
-        atkPlayerSound.Play();
-        streamId = AndroidNativeAudio.play(soundSixId);
+        //Unity Audio
+        audioManager.Play("Player Attack");
+
+        //Android Audio
+        streamId = AndroidNativeAudio.play(androidPlayerAttack);
         //midAttack = false;
         enemyHealth--;
         enemyDisplay.SetHealth(enemyHealth);
@@ -681,28 +660,17 @@ public class Blocker : MonoBehaviour
         {
             //Debug.Log("retaliate");
             CancelInvoke("SpawnCombo");
-            CancelInvoke("SpawnComboTwo");
-            CancelInvoke("SpawnComboThree");
-            CancelInvoke("SpawnComboFour");
-            atkStartSound.Play();
-            streamId = AndroidNativeAudio.play(soundThreeId);
+            //CancelInvoke("SpawnComboTwo");
+            //CancelInvoke("SpawnComboThree");
+            //CancelInvoke("SpawnComboFour");
+            //atkStartSound.Play();
+            audioManager.Play("Attack Switch");
+            streamId = AndroidNativeAudio.play(androidAttackSwitch);
             //retaliating = true;
 
-            retaliationAtkChance = Random.Range(0, 2);
+            retaliationAtkChance = Random.Range(0, enemy.counterAtks.Length);
 
-            if(retaliationAtkChance == 0)
-            {
-                enemySprite.GetComponent<SpriteRenderer>().material.color = Color.green;
-                enemySpriteHandler.PulseSprite();
-                Instantiate(relatiate1, spawner.transform.position, Quaternion.identity);
-            }
-
-            else
-            {
-                enemySprite.GetComponent<SpriteRenderer>().material.color = Color.gray;
-                enemySpriteHandler.PulseSprite();
-                Instantiate(relatiate2Up, spawner.transform.position, Quaternion.identity);
-            }
+            SpawnCounter();
 
         }
 
@@ -735,7 +703,6 @@ public class Blocker : MonoBehaviour
         atkCommit = false;
 
         //reset sword pixel art
-        //playerSpriteHandler.NeutralShieldArt();
         playerSpriteHandler.NeutralSwordArt();
 
         atkRest = false;
@@ -755,11 +722,7 @@ public class Blocker : MonoBehaviour
 
     private void ResetBlock()
     {
-        //resets twice?
-        //Debug.Log("ResetBlock1");
-
         //rest back to swordntrl sprite art
-        //if (!holdingBlock && !deflected && !atkRest)
         if (!holdingBlock && !atkRest)
         {
             //for future change, set current sprite to current sprite and then can just disable it here instead of ever sprite
@@ -802,14 +765,10 @@ public class Blocker : MonoBehaviour
         if (block || holdingBlock)
         {
             Debug.Log("DeflectArtResetBlock1");
-            //swordBlock1.GetComponent<SpriteRenderer>().enabled = true;
-            //shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
         }
         else
         {
             Debug.Log("DeflectArtResetNTRL");
-            //swordNtrl.GetComponent<SpriteRenderer>().enabled = true;
-            //shieldBlockNtrl.GetComponent<SpriteRenderer>().enabled = true;
             playerSpriteHandler.NeutralShieldArt();
             playerSpriteHandler.NeutralSwordArt();
         }
@@ -829,31 +788,28 @@ public class Blocker : MonoBehaviour
     public void SpawnCombo()
     {
         enemyNeutralStance = false;
-        Instantiate(atkCombo1, spawner.transform.position, Quaternion.identity);
+        Instantiate(enemy.atkCombos[atkIndex], spawner.transform.position, Quaternion.identity);
     }
 
-    public void SpawnComboTwo()
+    public void SpawnCounter()
     {
         enemyNeutralStance = false;
-        Instantiate(atkCombo2, spawner.transform.position, Quaternion.identity);
-    }
+        if(retaliationAtkChance > 0)
+        {
+            enemySpriteHandler.sprite.material.color = Color.gray;
+        }
 
-    public void SpawnComboThree()
-    {
-        enemyNeutralStance = false;
-        Instantiate(atkCombo3, spawner.transform.position, Quaternion.identity);
+        else
+        {
+            enemySpriteHandler.sprite.material.color = Color.green;
+        }
 
-    }
-
-    public void SpawnComboFour()
-    {
-        enemyNeutralStance = false;
-        Instantiate(atkCombo4, spawner.transform.position, Quaternion.identity);
+        enemySpriteHandler.PulseSprite();
+        Instantiate(enemy.counterAtks[retaliationAtkChance], spawner.transform.position, Quaternion.identity);
     }
 
     private void SpamFalse()
     {
-        //Debug.Log("CancelSpam");
         spam = false;
     }
 
@@ -866,15 +822,15 @@ public class Blocker : MonoBehaviour
     {
         disableButtons = false;
         playerPostureCount = 0;
-        //postureBars.SetPlayerPosture(playerPostureCount);
         playerDisplay.SetPosture(playerPostureCount);
     }
 
     private void StartPoseStuff()
     {
         midCombo = true;
-        atkStartSound.Play();
-        streamId = AndroidNativeAudio.play(soundThreeId);
+        //atkStartSound.Play();
+        audioManager.Play("Attack Switch");
+        streamId = AndroidNativeAudio.play(androidAttackSwitch);
     }
 
     private void OnTriggerEnter(Collider other)
@@ -897,36 +853,28 @@ public class Blocker : MonoBehaviour
         if (other.gameObject.CompareTag("StartPose"))
         {
             //Debug.Log("StartPose");
-            enemySprite.GetComponent<SpriteRenderer>().material.color = Color.red;
-            //atkStartSound.Play();
-            //streamId = AndroidNativeAudio.play(soundThreeId);
+            enemySpriteHandler.sprite.material.color = Color.red;
             StartPoseStuff();
         }
 
         else if (other.gameObject.CompareTag("StartPoseTwo"))
         {
             //Debug.Log("StartPoseTwo");
-            enemySprite.GetComponent<SpriteRenderer>().material.color = new Color(0.25f, 0.65f, 0.85f);
-            //atkStartSound.Play();
-            //streamId = AndroidNativeAudio.play(soundThreeId);
+            enemySpriteHandler.sprite.material.color = new Color(0.25f, 0.65f, 0.85f);
             StartPoseStuff();
 
         }
 
         else if (other.gameObject.CompareTag("StartPoseThree"))
         {
-            enemySprite.GetComponent<SpriteRenderer>().material.color = new Color(1, 0.3f, 0.5f);//dragon pink
-            //atkStartSound.Play();
-            //streamId = AndroidNativeAudio.play(soundThreeId);
+            enemySpriteHandler.sprite.material.color = new Color(1, 0.3f, 0.5f);
             StartPoseStuff();
 
         }
 
         else if (other.gameObject.CompareTag("StartPoseFour"))
         {
-            enemySprite.GetComponent<SpriteRenderer>().material.color = new Color(0, 1, 0.13f);
-            //atkStartSound.Play();
-            //streamId = AndroidNativeAudio.play(soundThreeId);
+            enemySpriteHandler.sprite.material.color = new Color(0, 1, 0.13f);
             StartPoseStuff();
 
         }
@@ -939,8 +887,7 @@ public class Blocker : MonoBehaviour
 
             CancelInvoke("PlayerAttack");
             PlayerStanceReset();
-            streamId = AndroidNativeAudio.play(soundId);
-            atkSound.Play();
+
 
             swipedUpOnTime = true;
 
@@ -954,8 +901,6 @@ public class Blocker : MonoBehaviour
             CancelInvoke("PlayerAttack");
 
             PlayerStanceReset();
-            streamId = AndroidNativeAudio.play(soundId);
-            atkSound.Play();
             blockOnTime = true;
             //Invoke("onTriggerFunction", 0.2f);
         }
@@ -965,8 +910,6 @@ public class Blocker : MonoBehaviour
             CancelInvoke("PlayerAttack");
 
             PlayerStanceReset();
-            streamId = AndroidNativeAudio.play(soundTwoId);
-            atkSoundWeak.Play();
             blockOnTime = true;
         }
 
@@ -991,8 +934,6 @@ public class Blocker : MonoBehaviour
         CancelInvoke("PlayerAttack");
 
         PlayerStanceReset();
-        streamId = AndroidNativeAudio.play(soundId);
-        atkSound.Play();
         blockOnTime = true;
 
 
@@ -1009,27 +950,13 @@ public class Blocker : MonoBehaviour
         {
             midCombo = false;//for decrease in size animation
 
-            enemySprite.GetComponent<SpriteRenderer>().material.color = Color.white;
+            enemySpriteHandler.sprite.material.color = Color.white;
             enemyNeutralStance = true;
 
-            atkIndex = Random.Range(0, 7);
+            atkIndex = Random.Range(0, enemy.atkCombos.Length);
             waitIndex = Random.Range(0, 1.75f);
-            if(atkIndex < 2)
-            {
-                Invoke("SpawnCombo", waitIndex);
-            }
-            else if(atkIndex == 2)
-            {
-                Invoke("SpawnComboTwo", waitIndex);
-            }
-            else if(atkIndex > 2 && atkIndex < 5)
-            {
-                Invoke("SpawnComboThree", waitIndex);
-            }
-            else if (atkIndex > 4)
-            {
-                Invoke("SpawnComboFour", waitIndex);
-            }
+
+            Invoke("SpawnCombo", waitIndex);
         }
 
         blockOnTime = false;
@@ -1038,12 +965,15 @@ public class Blocker : MonoBehaviour
         {
             //take posture damage
             playerPostureCount += 2;
-            //postureBars.SetPlayerPosture(playerPostureCount);
             playerDisplay.SetPosture(playerPostureCount);
 
             //take health damage
             playerHealth--;
             playerDisplay.SetHealth(playerHealth);
+
+            //take damage audio
+            audioManager.Play("Player Hit");
+            streamId = AndroidNativeAudio.play(androidPlayerHit);
 
             //camera shake
             cameraShakeScript.shakeIntensity = 1.25f;
