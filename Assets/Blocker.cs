@@ -28,6 +28,7 @@ public class Blocker : MonoBehaviour
     public int playerHealth;
     public int playerPostureCount;
     public int enemyPostureCount;
+    public int enemyLives;
 
     //Display References
     public EnemyDisplay enemyDisplay;
@@ -37,6 +38,8 @@ public class Blocker : MonoBehaviour
     public EnemySpriteHandler enemySpriteHandler;
     //PlayerSpriteReference
     public PlayerSpriteHandler playerSpriteHandler;
+
+    public bool growSprite;
 
     //camera shake references
     public CameraShakeScript cameraShakeScript;
@@ -48,8 +51,13 @@ public class Blocker : MonoBehaviour
     public Material flashMaterial;
     private Material originalMaterial;
     private Color currentColor;
+    private Sprite currentSprite;
+    private bool postAttack;
     public float flashDuration;
     private Coroutine flashRoutine;
+
+    //posture broken stuff
+    public bool enemyDowned;
 
     //Audio Reference
     private AudioManager audioManager;
@@ -113,15 +121,21 @@ public class Blocker : MonoBehaviour
     public bool swipedUp;
     public bool swipedDown;
 
+    //ground slam stuff
+    public bool groundSlam;
+    public bool dodgeSlam;
+
     // Start is called before the first frame update
     void Start()
     {
         //Material stuff
-        originalMaterial = spriteRenderer.material;
+        originalMaterial = enemySpriteHandler.sprite.material;
 
         //health bar stuff
         enemyHealth = enemyDisplay.enemy.health;
         playerHealth = playerDisplay.playerMaxHealth;
+        //life stuff
+        enemyLives = enemy.lives;
 
         //Audio refernce
         audioManager = FindObjectOfType<AudioManager>();
@@ -133,8 +147,8 @@ public class Blocker : MonoBehaviour
         AndroidNativeAudio.makePool();
         androidAttackSwitch = AndroidNativeAudio.load("Android Native Audio/465338__o-toener__zap.ogg");
         androidPlayerAttack = AndroidNativeAudio.load("Android Native Audio/334169__loudernoises__sword-clash (1).wav");
-        androidPlayerBlock = AndroidNativeAudio.load("Android Native Audio/500927__sawuare__wood-click-3");
-        androidPlayerHit = AndroidNativeAudio.load("Android Native Audio/HitAudio");
+        androidPlayerBlock = AndroidNativeAudio.load("Android Native Audio/500927__sawuare__wood-click-3.wav");
+        androidPlayerHit = AndroidNativeAudio.load("Android Native Audio/HitAudio.wav");
     }
 
     // Update is called once per frame
@@ -154,8 +168,17 @@ public class Blocker : MonoBehaviour
         }
         else
         {
-            //shrink before attacking
-            enemySpriteHandler.ShrinkSpriteSize();
+            if (!groundSlam)
+            {
+                //shrink before attacking
+                enemySpriteHandler.ShrinkSpriteSize();
+            }
+
+            else
+            {
+                enemySpriteHandler.MoveSpriteUp();
+            }
+
         }
 
         //stun player when player posture bar is full
@@ -165,12 +188,14 @@ public class Blocker : MonoBehaviour
             Invoke(nameof(EnableButtons), 1);
         }
 
-        if(enemyPostureCount > enemyDisplay.enemy.posture)
+        //if enemy posture reaches it's cap...
+        if(enemyPostureCount == enemyDisplay.enemy.posture)
         {
-            enemyHealth -= 10;
+            enemyHealth = 0;
             enemyDisplay.SetHealth(enemyHealth);
             enemyPostureCount = 0;
             enemyDisplay.SetPosture(enemyPostureCount);
+            EnemyPostureBroken();
 
         }
 
@@ -350,6 +375,38 @@ public class Blocker : MonoBehaviour
             CancelInvoke("ResetSpamCheck");
         }
 
+        if(groundSlam && dodgeSlam)
+        {
+            Debug.Log("DodgeSlam");
+            enemyPostureCount += 2;
+            enemyDisplay.SetPosture(enemyPostureCount);
+            //swipedUp = false;
+            //swipedUpOnTime = false;
+            groundSlam = false;
+            dodgeSlam = false;
+
+            //recycled shit
+            Debug.Log("Deflected");
+            CancelInvoke("DeflectedTimer");
+            deflected = true;
+            Invoke("DeflectedTimer", 0.225f);
+
+            audioManager.Play("Player Deflect");
+            streamId = AndroidNativeAudio.play(androidPlayerBlock);
+
+            deflectWindowTime = 0.225f;
+            mouseInputTime = 0.1f;
+            StopCoroutine(ResetMouseButtonAfterDelay());
+            canMouseInput = true;
+            deflectCount++;
+            block = false;
+            blockOnTime = false;
+            blockTryCount = 0;
+
+            spamCheck = false;
+            CancelInvoke("ResetSpamCheck");
+        }
+
         if (block && blockOnTime)
         {
             Debug.Log("Deflected");
@@ -450,16 +507,28 @@ public class Blocker : MonoBehaviour
     private IEnumerator FlashRoutine()
     {
         // Swap to the flashMaterial.
-        currentColor = spriteRenderer.color;
-        spriteRenderer.color = Color.white;
-        spriteRenderer.material = flashMaterial;
+        currentColor = enemySpriteHandler.sprite.material.color;
+        enemySpriteHandler.sprite.material.color = Color.white;
+        enemySpriteHandler.sprite.material = flashMaterial;
 
         // Pause the execution of this function for "duration" seconds.
         yield return new WaitForSeconds(flashDuration);
 
-        // After the pause, swap back to the original material.
-        spriteRenderer.color = currentColor;
-        spriteRenderer.material = originalMaterial;
+        //haven't fixed the color swap glitch when you attack before flashDuration ends
+        //if the color hasn't been changed by a combo about to go off...
+        // After the pause, swap back to the original material and THEN change color
+        if(enemySpriteHandler.sprite.material.color == Color.white)
+        {
+            enemySpriteHandler.sprite.material = originalMaterial;
+            enemySpriteHandler.sprite.material.color = currentColor;
+        }
+
+        else
+        {
+            enemySpriteHandler.sprite.material = originalMaterial;
+        }
+
+        
 
         // Set the routine to null, signaling that it's finished.
         flashRoutine = null;
@@ -590,6 +659,89 @@ public class Blocker : MonoBehaviour
         }
     }
 
+    //testing for blocking only when up on button
+    public void BlockButtonUpTest()
+    {
+        if (!disableButtons)
+        {
+            PlayerStanceReset();
+
+            //swipe feature testing
+            startMousePos = Input.mousePosition;
+            canSwipe = true;
+            Invoke("CantSwipe", 0.25f);
+            Debug.Log("startmousepos: " + startMousePos);
+
+
+            //if player is not commited to attack...
+            if (!atkCommit && !tookDmg)
+            {
+                Debug.Log("Block went through");
+                atkRest = false;
+                CancelInvoke("PlayerAttack");
+
+                //set sword block sprite art
+                playerSpriteHandler.BlockShieldArt();
+                playerSpriteHandler.NeutralSwordArt();
+
+                //temporary fix for block input delay making holding block equal to true without putting block button back up (since it's on a delay)
+                if (!blockButtonUpDuringInputDelay)
+                {
+                    //holdingBlock = true;
+                }
+                else
+                {
+                    blockButtonUpDuringInputDelay = false;
+                }
+
+
+                //Debug.Log("block");
+                //if(spamCheck && !blockOnTime)
+                if (spamCheck)
+                {
+                    Debug.Log("spammer");
+                    //CancelInvoke("ResetBlock");
+                    CancelInvoke("ResetSpamCheck");
+                    CancelInvoke("SpamFalse");
+                    spam = true;
+                    Invoke("SpamFalse", 0.5f);
+                }
+
+                spamCheck = true;
+
+                StartCoroutine(ResetMouseButtonAfterDelay());
+                canMouseInput = false;
+                block = true;
+                blockTryCount++;
+
+                //deflectWindowTime -= (blockTryCount * 0.1f);
+                /*
+                if (deflectWindowTime > 0.06f)
+                {
+                    deflectWindowTime -= 0.05f;
+                }*/
+
+                //mouseInputTime = 0.25f;
+
+                //StartCoroutine(ResetIsClickedAfterDelay());
+                //Invoke("ResetBlockArt", 0.5f);
+
+                //Try to see if this makes things more consisntet or messes stuff up (Added 8/27)
+                CancelInvoke("ResetBlock");
+
+                Invoke("ResetBlock", deflectWindowTime);
+                Invoke("ResetSpamCheck", spamWindowTime);
+            }
+
+            else if (atkRest || tookDmg)
+            {
+                Debug.Log("BlockInputDelay");
+                Invoke("BlockInputDelay", blockInputDelayTime);
+                blockInputDelay = true;
+            }
+        }
+    }
+
     private void CantSwipe()
     {
         canSwipe = false;
@@ -625,9 +777,43 @@ public class Blocker : MonoBehaviour
         }
     }
 
+    //testing for blocking only when up on button
+    public void AttackButtonUpTest()
+    {
+        if (!disableButtons)
+        {
+            PlayerStanceReset();
+
+            if ((!atkRest && !tookDmg))
+            {
+                CancelInvoke("DeflectArtReset");
+                playerSpriteHandler.PreAttackArt();
+
+                CancelInvoke("PlayerAttack");
+                Invoke("PlayerAttack", playerAtkDelay);
+                atkRest = true;
+                //midAttack = true;
+                block = false;
+            }
+            else if ((atkRest || tookDmg) && !atkInputDelay)
+            {
+                Invoke("AtkInputDelay", atkInputDelayTime);
+                atkInputDelay = true;
+            }
+        }
+    }
+
     public void PlayerAttack()
     {
         atkCommit = true;
+
+        //switch enemy sprite to guard
+        if (!midCombo)
+        {
+            Debug.Log("Gaurd");
+            enemySpriteHandler.SpriteSwap(enemy.guardSprite);
+        }
+        
 
         //switch sword sprites
         playerSpriteHandler.PostAttackArt();
@@ -793,15 +979,20 @@ public class Blocker : MonoBehaviour
 
     public void SpawnCounter()
     {
+        midCombo = true;
         enemyNeutralStance = false;
         if(retaliationAtkChance > 0)
         {
-            enemySpriteHandler.sprite.material.color = Color.gray;
+            Debug.Log("CounterTwo");
+            //enemySpriteHandler.sprite.material.color = Color.gray;
+            enemySpriteHandler.SpriteSwap(enemy.counterAtksComboSprites[0]);
         }
 
         else
         {
-            enemySpriteHandler.sprite.material.color = Color.green;
+            Debug.Log("CounterOne");
+            //enemySpriteHandler.sprite.material.color = Color.green;
+            enemySpriteHandler.SpriteSwap(enemy.counterAtksComboSprites[0]);
         }
 
         enemySpriteHandler.PulseSprite();
@@ -835,94 +1026,131 @@ public class Blocker : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        //Debug.Log("Enter" + Time.time);
-
-        enemyNeutralStance = false;
-
-        //Debug.Log("Triggered");
-        //Debug.Log(Time.time);
-
-        //StopCoroutine(ResetIsClickedAfterDelay());
-
-        //cancel player attack
-        //CancelInvoke("PlayerAttack");
-        //midAttack = false;
-        atkRest = false;
-
-
-        if (other.gameObject.CompareTag("StartPose"))
+        if (!enemyDowned)
         {
-            //Debug.Log("StartPose");
-            enemySpriteHandler.sprite.material.color = Color.red;
-            StartPoseStuff();
-        }
+            //Debug.Log("Enter" + Time.time);
 
-        else if (other.gameObject.CompareTag("StartPoseTwo"))
-        {
-            //Debug.Log("StartPoseTwo");
-            enemySpriteHandler.sprite.material.color = new Color(0.25f, 0.65f, 0.85f);
-            StartPoseStuff();
+            enemyNeutralStance = false;
 
-        }
+            //Debug.Log("Triggered");
+            //Debug.Log(Time.time);
 
-        else if (other.gameObject.CompareTag("StartPoseThree"))
-        {
-            enemySpriteHandler.sprite.material.color = new Color(1, 0.3f, 0.5f);
-            StartPoseStuff();
+            //StopCoroutine(ResetIsClickedAfterDelay());
 
-        }
-
-        else if (other.gameObject.CompareTag("StartPoseFour"))
-        {
-            enemySpriteHandler.sprite.material.color = new Color(0, 1, 0.13f);
-            StartPoseStuff();
-
-        }
-
-        //swiping up stuff
-        else if (other.gameObject.CompareTag("Retaliate2Up"))
-        {
-            
-            Debug.Log("Retaliate2Up");
-
-            CancelInvoke("PlayerAttack");
-            PlayerStanceReset();
-
-
-            swipedUpOnTime = true;
-
-
-        }
-
-        else if (!spam)
-        {
-            
             //cancel player attack
-            CancelInvoke("PlayerAttack");
+            //CancelInvoke("PlayerAttack");
+            //midAttack = false;
+            atkRest = false;
 
-            PlayerStanceReset();
-            blockOnTime = true;
-            //Invoke("onTriggerFunction", 0.2f);
+            if (other.gameObject.CompareTag("StartPose"))//ground slam for now
+            {
+                //Debug.Log("StartPose");
+                //enemySpriteHandler.sprite.material.color = Color.red;
+                enemySpriteHandler.SpriteSwap(enemy.atkComboSprites[0]);
+                StartPoseStuff();
+            }
+
+            else if (other.gameObject.CompareTag("StartPoseTwo"))
+            {
+                //Debug.Log("StartPoseTwo");
+                //enemySpriteHandler.sprite.material.color = new Color(0.25f, 0.65f, 0.85f);
+                enemySpriteHandler.SpriteSwap(enemy.atkComboSprites[1]);
+                StartPoseStuff();
+
+            }
+
+            else if (other.gameObject.CompareTag("StartPoseThree"))
+            {
+                enemySpriteHandler.sprite.material.color = new Color(1, 0.3f, 0.5f);
+                StartPoseStuff();
+
+            }
+
+            else if (other.gameObject.CompareTag("StartPoseFour"))
+            {
+                enemySpriteHandler.sprite.material.color = new Color(0, 1, 0.13f);
+                StartPoseStuff();
+
+            }
+
+            //swiping up stuff
+            else if (other.gameObject.CompareTag("Retaliate2Up"))
+            {
+
+                Debug.Log("Retaliate2Up");
+
+                CancelInvoke("PlayerAttack");
+                PlayerStanceReset();
+
+
+                swipedUpOnTime = true;
+
+
+            }
+
+            /*
+            else if (!spam)
+            {
+
+                //cancel player attack
+                CancelInvoke("PlayerAttack");
+
+                PlayerStanceReset();
+                blockOnTime = true;
+                //Invoke("onTriggerFunction", 0.2f);
+            }*/
+
+            else
+            {
+                //cancel player attack
+                CancelInvoke("PlayerAttack");
+
+                PlayerStanceReset();
+                blockOnTime = true;
+
+                //atk sprites
+
+                if (!other.gameObject.CompareTag("RetaliateOne") && !other.gameObject.CompareTag("Counter"))
+                {
+                    currentSprite = enemySpriteHandler.sprite.sprite;
+                    enemySpriteHandler.SpriteSwap(enemy.postAtkComboSprites[atkIndex]);
+                    postAttack = true;
+                    Invoke("SwitchBackToCurrentSprite", 0.15f);
+                }
+                else
+                {
+                    Debug.Log("CounterSwap");
+                    currentSprite = enemySpriteHandler.sprite.sprite;
+                    enemySpriteHandler.SpriteSwap(enemy.postAtkComboSprites[2]);
+                    postAttack = true;
+                    Invoke("SwitchBackToCurrentSprite", 0.15f);
+                }
+            }
+
+            //pulse to demonstrate attack/add some "juice"
+            enemySpriteHandler.PulseSprite();
+
+            //why is this happening again?
+            //CancelInvoke("ResetBlock");
+
+
+
+
+            //Debug.Log("OnTriggerEnter" + Time.time);
+
+            //groundslam sprite
+            if (other.gameObject.CompareTag("Ground Slam"))
+            {
+                groundSlam = true;
+                CancelInvoke("PlayerAttack");
+                PlayerStanceReset();
+                enemySpriteHandler.MoveSpriteDown();
+                StartCoroutine(enemySpriteHandler.GroundSlamSprite());
+            }
+
         }
-        else
-        {   
-            //cancel player attack
-            CancelInvoke("PlayerAttack");
-
-            PlayerStanceReset();
-            blockOnTime = true;
-        }
-
-        //pulse to demonstrate attack/add some "juice"
-        enemySpriteHandler.PulseSprite();
-
-        //why is this happening again?
-        //CancelInvoke("ResetBlock");
 
         
-
-
-        //Debug.Log("OnTriggerEnter" + Time.time);
 
     }
 
@@ -946,22 +1174,37 @@ public class Blocker : MonoBehaviour
 
         CancelInvoke("DeflectedTimer");
 
-        if (other.gameObject.CompareTag("FinalAtk") || other.gameObject.CompareTag("RetaliateOne") || other.gameObject.CompareTag("Retaliate2Up"))
+        if (enemyDowned)
         {
+            //Doing everything that this function does otherwise
+            midCombo = false;
+        }
+
+
+        else if (other.gameObject.CompareTag("FinalAtk") || other.gameObject.CompareTag("Ground Slam") || other.gameObject.CompareTag("RetaliateOne") || other.gameObject.CompareTag("Retaliate2Up"))
+        {
+
             midCombo = false;//for decrease in size animation
 
-            enemySpriteHandler.sprite.material.color = Color.white;
-            enemyNeutralStance = true;
+            //enemySpriteHandler.sprite.material.color = Color.white;
+            if (!postAttack)
+            {
+                enemySpriteHandler.SpriteSwap(enemy.neutralSprite);
+                enemyNeutralStance = true;
+            }
 
-            atkIndex = Random.Range(0, enemy.atkCombos.Length);
+            //actual one
+            atkIndex = Random.Range(0, enemy.atkCombos.Length - (enemyLives - 1));
+            //cheat
+            //atkIndex = Random.Range(0, 1);
             waitIndex = Random.Range(0, 1.75f);
 
             Invoke("SpawnCombo", waitIndex);
         }
 
-        blockOnTime = false;
 
-        if (!deflected && (!other.gameObject.CompareTag("StartPose") && !other.gameObject.CompareTag("StartPoseTwo") && !other.gameObject.CompareTag("StartPoseThree") && !other.gameObject.CompareTag("StartPoseFour")))
+
+        else if (!deflected && (!other.gameObject.CompareTag("StartPose") && !other.gameObject.CompareTag("StartPoseTwo") && !other.gameObject.CompareTag("StartPoseThree") && !other.gameObject.CompareTag("StartPoseFour")))
         {
             //take posture damage
             playerPostureCount += 2;
@@ -990,9 +1233,28 @@ public class Blocker : MonoBehaviour
 
         }
 
+        blockOnTime = false;
+
+        groundSlam = false;
+
         deflected = false;
         //Debug.Log("OntriggerExit" + Time.time);
         Destroy(other.gameObject);
+    }
+
+    private void EnemyPostureBroken()
+    {
+        enemyDowned = true;
+        CancelInvoke("SpawnCombo");
+        enemyLives--;
+        enemyDisplay.SetLives(enemyLives);
+        enemySpriteHandler.SpriteSwap(enemy.downedSprite);
+
+    }
+
+    private void AddAttackCombo()
+    {
+        
     }
 
     private void DamageStun()
@@ -1000,5 +1262,17 @@ public class Blocker : MonoBehaviour
         tookDmg = false;
     }
 
-    //git kraken test
+    private void SwitchBackToCurrentSprite()
+    {
+        if (midCombo)
+        {
+            enemySpriteHandler.SpriteSwap(currentSprite);
+        }
+        else if(!enemyDowned)
+        {
+            enemySpriteHandler.SpriteSwap(enemy.neutralSprite);
+            enemyNeutralStance = true;
+        }
+
+    }
 }

@@ -11,6 +11,8 @@ TagManager:
   - StartPoseFour
   - RetaliateOne
   - Retaliate2Up
+  - Counter
+  - Ground Slam
   layers:
   - Default
   - TransparentFX

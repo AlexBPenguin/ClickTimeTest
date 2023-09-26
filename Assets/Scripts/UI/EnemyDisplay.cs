@@ -16,6 +16,7 @@ public class EnemyDisplay : MonoBehaviour
 
     //Text
     public TMP_Text nameText;
+    public TMP_Text livesText;
 
     //set health and posture bars to max and set name text to enemy name
     private void Start()
@@ -26,9 +27,7 @@ public class EnemyDisplay : MonoBehaviour
 
         //Text
         nameText.text = enemy.name;
-
-        //Sprite
-        //sprite.sprite = enemy.neutralSprite;
+        livesText.text = "Lives: " + enemy.lives.ToString();
     }
 
     //Health
@@ -52,5 +51,10 @@ public class EnemyDisplay : MonoBehaviour
     public void SetPosture(int posture)
     {
         enemyPostureSlider.value = posture;
+    }
+
+    public void SetLives(int lives)
+    {
+        livesText.text = "Lives: " + lives.ToString();
     }
 }

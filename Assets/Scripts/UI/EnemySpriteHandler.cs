@@ -1,6 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEditor.U2D;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class EnemySpriteHandler : MonoBehaviour
@@ -14,6 +14,7 @@ public class EnemySpriteHandler : MonoBehaviour
     //sprite animation sizes
     [SerializeField] Vector3 spriteStartSize;
     [SerializeField] Vector3 spriteSmallestSize;
+    [SerializeField] Vector3 spriteLargestSize;
 
     //multiplier to adjust spriteSamllestSize
     [SerializeField] float smallSpriteMultiplier;
@@ -21,13 +22,25 @@ public class EnemySpriteHandler : MonoBehaviour
     //multiplier to adjust pulse size
     [SerializeField] float pulseSize;
 
-    //multipliers for sprite size return and shrink speed
+    //multipliers for sprite size return and shrink speed 
     [SerializeField] float returnSpeed;
     [SerializeField] float shrinkSpeed;
+    [SerializeField] float growSpeed;
+
+    //multipliers for sprite up speed and down speed
+    [SerializeField] float upSpeed;
+    [SerializeField] float downSpeed;
+    [SerializeField] Vector3 startPos;
+
+    //ground slam sprite reference
+    [SerializeField] GameObject groundSlamSprite;
 
     //sets sprite to neutral sprite and sets spriteStartSize and spriteSmallestSize
     private void Start()
     {
+        //set neutral transform position
+        startPos = sprite.transform.position;
+
         //set neutral sprite
         sprite.sprite = enemy.neutralSprite;
 
@@ -53,9 +66,34 @@ public class EnemySpriteHandler : MonoBehaviour
         transform.localScale = Vector3.Lerp(transform.localScale, spriteSmallestSize, Time.deltaTime * shrinkSpeed);
     }
 
+    public void GrowSpriteSize()
+    {
+        transform.localScale = Vector3.Lerp(transform.localScale, spriteLargestSize, Time.deltaTime * growSpeed);
+    }
+
     //pulses sprite (used for enemy attacks)
     public void PulseSprite()
     {
         transform.localScale = spriteStartSize * pulseSize;
+    }
+
+    public IEnumerator GroundSlamSprite()
+    {
+        groundSlamSprite.SetActive(true);
+
+        yield return new WaitForSeconds(0.2f);
+
+        groundSlamSprite.SetActive(false);
+    }
+
+    public void MoveSpriteUp()
+    {
+        transform.Translate(Vector3.up * Time.deltaTime * upSpeed);
+    }
+
+    public void MoveSpriteDown()
+    {
+        //transform.position = Vector3.MoveTowards(transform.position, startPos, downSpeed);
+        transform.position = startPos;
     }
 }
