@@ -17,8 +17,8 @@ MonoBehaviour:
   downedSprite: {fileID: 21300000, guid: 18ef875f50077a94dacc69c9c66f80e5, type: 3}
   name: Samurai
   health: 50
-  posture: 5
-  lives: 3
+  posture: 10
+  lives: 2
   atkCombos:
   - {fileID: 724201227447872877, guid: 3c77bfae5f4f20e4a8fef07bb8f0fdf0, type: 3}
   - {fileID: 724201227447872877, guid: c279d9f18eecf4c44899b654867b2846, type: 3}

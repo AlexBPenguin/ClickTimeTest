@@ -189,8 +189,9 @@ public class Blocker : MonoBehaviour
         }
 
         //if enemy posture reaches it's cap...
-        if(enemyPostureCount == enemyDisplay.enemy.posture)
+        if(enemyPostureCount >= enemyDisplay.enemy.posture)
         {
+            Debug.Log("Enemy Posture Broken Update");
             enemyHealth = 0;
             enemyDisplay.SetHealth(enemyHealth);
             enemyPostureCount = 0;
@@ -1204,7 +1205,7 @@ public class Blocker : MonoBehaviour
 
 
 
-        else if (!deflected && (!other.gameObject.CompareTag("StartPose") && !other.gameObject.CompareTag("StartPoseTwo") && !other.gameObject.CompareTag("StartPoseThree") && !other.gameObject.CompareTag("StartPoseFour")))
+        if (!deflected && (!other.gameObject.CompareTag("StartPose") && !other.gameObject.CompareTag("StartPoseTwo") && !other.gameObject.CompareTag("StartPoseThree") && !other.gameObject.CompareTag("StartPoseFour")))
         {
             //take posture damage
             playerPostureCount += 2;
@@ -1249,12 +1250,27 @@ public class Blocker : MonoBehaviour
         enemyLives--;
         enemyDisplay.SetLives(enemyLives);
         enemySpriteHandler.SpriteSwap(enemy.downedSprite);
+        Invoke("AddAttackCombo", 2f);
 
     }
 
     private void AddAttackCombo()
     {
-        
+        if(enemyLives > 0)
+        {
+            //change sprite to neutral
+            enemySpriteHandler.SpriteSwap(enemy.neutralSprite);
+            //set health back
+            enemyDisplay.SetHealth(enemy.health);
+            enemyHealth = enemy.health;
+            //initiate new combo
+            //atkIndex = Random.Range(0, enemy.atkCombos.Length - (enemyLives - 1));
+            atkIndex = (enemy.atkCombos.Length - (enemyLives - 1)) - 1;//if 1 life left/2 atk combos: (2 - (1 - 1)) = 2 - 1 = 1 (pick this combo)
+            waitIndex = Random.Range(0, 1.75f);
+            Invoke("SpawnCombo", waitIndex);
+            enemyDowned = false;
+        }
+
     }
 
     private void DamageStun()
