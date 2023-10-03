@@ -32,12 +32,12 @@ public class CameraMove : MonoBehaviour
 
     public void MoveCameraBack()
     {
-        transform.position = Vector3.MoveTowards(transform.position, backButtonTransform.position, speed);
+        transform.position = Vector3.MoveTowards(transform.position, backButtonTransform.position, (speed * Time.deltaTime));
     }
 
     public void MoveCameraToStart()
     {
-        transform.position = Vector3.MoveTowards(transform.position, startPos, speed);
+        transform.position = Vector3.MoveTowards(transform.position, startPos, (speed * Time.deltaTime));
     }
 
     public void SetBackButtonPressedFalse()

@@ -9,6 +9,7 @@ public class PlayerSpriteHandler : MonoBehaviour
     [SerializeField] SpriteRenderer preAttackArt;
     [SerializeField] SpriteRenderer postAttackArt;
     [SerializeField] SpriteRenderer currentSwordArt;
+    [SerializeField] SpriteRenderer counterShine;
 
 
     //shield art references
@@ -42,6 +43,19 @@ public class PlayerSpriteHandler : MonoBehaviour
         currentSwordArt.enabled = false;
         postAttackArt.enabled = true;
         currentSwordArt= postAttackArt;
+    }
+
+    public void CounterAttackShineArt()
+    {
+        if (!counterShine.enabled)
+        {
+            counterShine.enabled = true;
+        }
+        else
+        {
+            counterShine.enabled = false;
+        }
+        
     }
 
     //Block art

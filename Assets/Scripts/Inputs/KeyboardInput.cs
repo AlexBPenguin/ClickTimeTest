@@ -18,7 +18,7 @@ public class KeyboardInput : MonoBehaviour
         //BLOCK
         if (Input.GetKeyDown(KeyCode.A))
         {
-            Debug.Log("BlockButtonDown");
+            //Debug.Log("BlockButtonDown");
             if (!blocker.enemyDowned)
             {
                 blocker.BlockButton();
@@ -27,14 +27,14 @@ public class KeyboardInput : MonoBehaviour
         }
         if (Input.GetKeyUp(KeyCode.A))
         {
-            Debug.Log("BlockButtonUp");
+            //Debug.Log("BlockButtonUp");
             blocker.BlockButtonUp();
         }
 
         //ATTACK
         if (Input.GetKeyDown(KeyCode.D))
         {
-            Debug.Log("AttackButtonDown");
+            //Debug.Log("AttackButtonDown");
 
 
             if (!blocker.enemyDowned)
@@ -45,28 +45,28 @@ public class KeyboardInput : MonoBehaviour
         }
         if (Input.GetKeyUp(KeyCode.D))
         {
-            Debug.Log("AttackButtonUp");
+            //Debug.Log("AttackButtonUp");
         }
 
         //UP
         if (Input.GetKeyDown(KeyCode.W))
         {
-            Debug.Log("UpButtonDown");
+            //Debug.Log("UpButtonDown");
         }
         if (Input.GetKeyUp(KeyCode.W))
         {
-            Debug.Log("UpButtonUp");
+            //Debug.Log("UpButtonUp");
         }
 
         //DOWN
         if (Input.GetKeyDown(KeyCode.S))
         {
-            Debug.Log("DownButtonDown");
+            //Debug.Log("DownButtonDown");
             if (!blocker.enemyDowned)
             {
                 if (!cameraMove.backButtonPressed)
                 {
-                    cameraMove.Invoke("SetBackButtonPressedFalse", 0.3f);
+                    cameraMove.Invoke("SetBackButtonPressedFalse", 0.25f);
                     blocker.dodgeSlam = true;
                 }
 
@@ -75,9 +75,10 @@ public class KeyboardInput : MonoBehaviour
 
 
         }
-        if (Input.GetKeyDown(KeyCode.S))
+
+        if (Input.GetKeyUp(KeyCode.S))
         {
-            Debug.Log("DownButtonUp");
+            //Debug.Log("DownButtonUp");
         }
     }
 }

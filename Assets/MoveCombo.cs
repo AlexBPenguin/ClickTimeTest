@@ -11,7 +11,7 @@ public class MoveCombo : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        Invoke("DestroyThisObject", destroyTime);
+        //Invoke("DestroyThisObject", destroyTime);
     }
 
     // Update is called once per frame
@@ -35,11 +35,16 @@ public class MoveCombo : MonoBehaviour
             transform.Translate(Vector3.down * comboMoveSpeed * Time.deltaTime);
         }*/
 
-        transform.Translate(Vector3.down * comboMoveSpeed * Time.deltaTime);
+        if (moveCombo)
+        {
+            transform.Translate(Vector3.down * comboMoveSpeed * Time.deltaTime);
+        }
+
     }
 
+    /*
     private void DestroyThisObject()
     {
         Destroy(gameObject);
-    }
+    }*/
 }

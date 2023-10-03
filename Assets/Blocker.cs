@@ -6,11 +6,17 @@ using System.Net.NetworkInformation;
 
 public class Blocker : MonoBehaviour
 {
+    //debug
+    [SerializeField] bool canDebug;
+
     public EnemyScriptableObject enemy;
 
     public bool midCombo;
 
     public GameObject atkObject;
+
+    public GameObject[] atkCombos;
+    public GameObject[] counterAtks;
 
     public int atkIndex;
     public float waitIndex;
@@ -66,6 +72,12 @@ public class Blocker : MonoBehaviour
     public int blockTryCount;
 
     public float blockTimer;
+
+    //Player Counter Attack Stuff
+    [SerializeField] bool canCounterAtk;
+    private Coroutine playerAttackCounter;
+    [SerializeField] float counterAtkDuration;
+
 
     public float playerAtkDelay;
     public bool midAttack;
@@ -128,6 +140,11 @@ public class Blocker : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (!canDebug)
+        {
+            Debug.unityLogger.logEnabled = false;
+        }
+
         //Material stuff
         originalMaterial = enemySpriteHandler.sprite.material;
 
@@ -149,6 +166,26 @@ public class Blocker : MonoBehaviour
         androidPlayerAttack = AndroidNativeAudio.load("Android Native Audio/334169__loudernoises__sword-clash (1).wav");
         androidPlayerBlock = AndroidNativeAudio.load("Android Native Audio/500927__sawuare__wood-click-3.wav");
         androidPlayerHit = AndroidNativeAudio.load("Android Native Audio/HitAudio.wav");
+
+
+        //NEW OBSTANTIATE METHOD TESTING
+
+        atkCombos = new GameObject[enemy.atkCombos.Length];
+        for (int i = 0; i < enemy.atkCombos.Length; i++)
+        {
+            
+            atkCombos[i] = Instantiate(enemy.atkCombos[i], spawner.transform.position, Quaternion.identity);
+            Debug.Log("SpawnAtkAtStart");
+        }
+
+        counterAtks = new GameObject[enemy.counterAtks.Length];
+        for (int i = 0; i < enemy.counterAtks.Length; i++)
+        {
+
+            counterAtks[i] = Instantiate(enemy.counterAtks[i], spawner.transform.position, Quaternion.identity);
+            Debug.Log("SpawnAtkAtStart");
+        }
+
     }
 
     // Update is called once per frame
@@ -191,7 +228,7 @@ public class Blocker : MonoBehaviour
         //if enemy posture reaches it's cap...
         if(enemyPostureCount >= enemyDisplay.enemy.posture)
         {
-            Debug.Log("Enemy Posture Broken Update");
+            //Debug.Log("Enemy Posture Broken Update");
             enemyHealth = 0;
             enemyDisplay.SetHealth(enemyHealth);
             enemyPostureCount = 0;
@@ -348,14 +385,14 @@ public class Blocker : MonoBehaviour
         //swipe stuff
         if(swipedUp && swipedUpOnTime)
         {
-            Debug.Log("MikiriCounter");
+            //Debug.Log("MikiriCounter");
             enemyPostureCount += 2;
             enemyDisplay.SetPosture(enemyPostureCount);
             swipedUp = false;
             swipedUpOnTime = false;
 
             //recycled shit
-            Debug.Log("Deflected");
+            //Debug.Log("Deflected");
             CancelInvoke("DeflectedTimer");
             deflected = true;
             Invoke("DeflectedTimer", 0.225f);
@@ -378,16 +415,21 @@ public class Blocker : MonoBehaviour
 
         if(groundSlam && dodgeSlam)
         {
-            Debug.Log("DodgeSlam");
-            enemyPostureCount += 2;
-            enemyDisplay.SetPosture(enemyPostureCount);
+            //Debug.Log("DodgeSlam");
+
+            //enemyPostureCount += 2;
+            //enemyDisplay.SetPosture(enemyPostureCount);
+
             //swipedUp = false;
             //swipedUpOnTime = false;
+
             groundSlam = false;
             dodgeSlam = false;
 
+            PlayerCounterAttackFunction();
+
             //recycled shit
-            Debug.Log("Deflected");
+            //Debug.Log("Deflected");
             CancelInvoke("DeflectedTimer");
             deflected = true;
             Invoke("DeflectedTimer", 0.225f);
@@ -410,7 +452,7 @@ public class Blocker : MonoBehaviour
 
         if (block && blockOnTime)
         {
-            Debug.Log("Deflected");
+            //Debug.Log("Deflected");
             CancelInvoke("DeflectedTimer");
             deflected = true;
             Invoke("DeflectedTimer", 0.225f);
@@ -544,7 +586,7 @@ public class Blocker : MonoBehaviour
     public void BlockButton()
     {
         //CancelInvoke("DeflectArtReset");
-        if (!disableButtons)
+        if (!disableButtons || !enemyDowned)
         {
             PlayerStanceReset();
 
@@ -552,13 +594,13 @@ public class Blocker : MonoBehaviour
             startMousePos = Input.mousePosition;
             canSwipe = true;
             Invoke("CantSwipe", 0.25f);
-            Debug.Log("startmousepos: " + startMousePos);
+            //Debug.Log("startmousepos: " + startMousePos);
 
 
             //if player is not commited to attack...
             if (!atkCommit && !tookDmg)
             {
-                Debug.Log("Block went through");
+                //Debug.Log("Block went through");
                 atkRest = false;
                 CancelInvoke("PlayerAttack");
 
@@ -581,7 +623,7 @@ public class Blocker : MonoBehaviour
                 //if(spamCheck && !blockOnTime)
                 if (spamCheck)
                 {
-                    Debug.Log("spammer");
+                    //Debug.Log("spammer");
                     //CancelInvoke("ResetBlock");
                     CancelInvoke("ResetSpamCheck");
                     CancelInvoke("SpamFalse");
@@ -617,7 +659,7 @@ public class Blocker : MonoBehaviour
 
             else if (atkRest || tookDmg)
             {
-                Debug.Log("BlockInputDelay");
+                //Debug.Log("BlockInputDelay");
                 Invoke("BlockInputDelay", blockInputDelayTime);
                 blockInputDelay = true;
             }
@@ -627,43 +669,48 @@ public class Blocker : MonoBehaviour
 
     public void BlockButtonUp()
     {
-        //swipe feature testing
-        Debug.Log("EndMousePos" + endMousePos);
-        if(canSwipe && ((endMousePos.y - startMousePos.y) >= 125))
+        if (!enemyDowned)
         {
-            Debug.Log("SwipedUp!");
-            swipedUp = true;
-            Invoke("SwipeUpReset", deflectWindowTime);
+            //swipe feature testing
+            //Debug.Log("EndMousePos" + endMousePos);
+            if (canSwipe && ((endMousePos.y - startMousePos.y) >= 125))
+            {
+                //Debug.Log("SwipedUp!");
+                swipedUp = true;
+                Invoke("SwipeUpReset", deflectWindowTime);
 
-        }
-        else if(canSwipe && ((endMousePos.y - startMousePos.y) <= -125))
-        {
-            Debug.Log("swipedDown!");
-            swipedDown = true;
+            }
+            else if (canSwipe && ((endMousePos.y - startMousePos.y) <= -125))
+            {
+                //Debug.Log("swipedDown!");
+                swipedDown = true;
+            }
+
+            //Debug.Log("BlockButtonUp1");
+            holdingBlock = false;
+            if (blockInputDelay)
+            {
+                blockButtonUpDuringInputDelay = true;
+            }
+
+            //i can lift button up before a deflection is counted
+            //if (!block && !atkRest)
+            if (!block && !deflected && !atkRest)
+            {
+                //Debug.Log("blockbuttonup2");
+                CancelInvoke("DeflectArtReset");
+                playerSpriteHandler.NeutralSwordArt();
+                playerSpriteHandler.NeutralShieldArt();
+            }
         }
 
-        Debug.Log("BlockButtonUp1");
-        holdingBlock = false;
-        if (blockInputDelay)
-        {
-            blockButtonUpDuringInputDelay = true;
-        }
-
-        //i can lift button up before a deflection is counted
-        //if (!block && !atkRest)
-        if (!block && !deflected && !atkRest)
-        {
-            Debug.Log("blockbuttonup2");
-            CancelInvoke("DeflectArtReset");
-            playerSpriteHandler.NeutralSwordArt();
-            playerSpriteHandler.NeutralShieldArt();
-        }
+        
     }
 
     //testing for blocking only when up on button
     public void BlockButtonUpTest()
     {
-        if (!disableButtons)
+        if (!disableButtons || !enemyDowned)
         {
             PlayerStanceReset();
 
@@ -755,7 +802,7 @@ public class Blocker : MonoBehaviour
 
     public void AttackButton()
     {
-        if (!disableButtons)
+        if (!disableButtons || !enemyDowned)
         {
             PlayerStanceReset();
 
@@ -781,7 +828,7 @@ public class Blocker : MonoBehaviour
     //testing for blocking only when up on button
     public void AttackButtonUpTest()
     {
-        if (!disableButtons)
+        if (!disableButtons || !enemyDowned)
         {
             PlayerStanceReset();
 
@@ -811,7 +858,7 @@ public class Blocker : MonoBehaviour
         //switch enemy sprite to guard
         if (!midCombo)
         {
-            Debug.Log("Gaurd");
+            //Debug.Log("Gaurd");
             enemySpriteHandler.SpriteSwap(enemy.guardSprite);
         }
         
@@ -825,7 +872,20 @@ public class Blocker : MonoBehaviour
         //Android Audio
         streamId = AndroidNativeAudio.play(androidPlayerAttack);
         //midAttack = false;
-        enemyHealth--;
+        if (!canCounterAtk)
+        {
+            //Debug.Log("No Counter");
+            enemyHealth--;
+        }
+
+        else
+        {
+            //Debug.Log("Yes counter");
+            //counter attack posture damage
+            enemyHealth--;
+            enemyPostureCount += 2;
+            enemyDisplay.SetPosture(enemyPostureCount);
+        }
         enemyDisplay.SetHealth(enemyHealth);
 
         //enemy shake
@@ -885,7 +945,7 @@ public class Blocker : MonoBehaviour
     //complete an attack swing
     private void ResetAtkRest()
     {
-        Debug.Log("ResetAtkRest");
+        //Debug.Log("ResetAtkRest");
 
         atkCommit = false;
 
@@ -914,23 +974,23 @@ public class Blocker : MonoBehaviour
         {
             //for future change, set current sprite to current sprite and then can just disable it here instead of ever sprite
 
-            Debug.Log("ResetBlock2");
+            //Debug.Log("ResetBlock2");
             playerSpriteHandler.NeutralSwordArt();
             playerSpriteHandler.NeutralShieldArt();
         }
         else if (holdingBlock)
         {
-            Debug.Log("holding");
+            //Debug.Log("holding");
         }
 
         else if (deflected)
         {
-            Debug.Log("Deflecting");
+            //Debug.Log("Deflecting");
         }
 
         else if (atkRest)
         {
-            Debug.Log("AtkResting");
+            //Debug.Log("AtkResting");
         }
 
         block = false;
@@ -951,11 +1011,11 @@ public class Blocker : MonoBehaviour
     {
         if (block || holdingBlock)
         {
-            Debug.Log("DeflectArtResetBlock1");
+            //Debug.Log("DeflectArtResetBlock1");
         }
         else
         {
-            Debug.Log("DeflectArtResetNTRL");
+            //Debug.Log("DeflectArtResetNTRL");
             playerSpriteHandler.NeutralShieldArt();
             playerSpriteHandler.NeutralSwordArt();
         }
@@ -966,7 +1026,7 @@ public class Blocker : MonoBehaviour
         //rest back to swordntrl sprite art
         if (!holdingBlock)
         {
-            Debug.Log("ResetBlockArt");
+            //Debug.Log("ResetBlockArt");
             playerSpriteHandler.NeutralShieldArt();
             playerSpriteHandler.NeutralSwordArt();
         }
@@ -975,7 +1035,10 @@ public class Blocker : MonoBehaviour
     public void SpawnCombo()
     {
         enemyNeutralStance = false;
-        Instantiate(enemy.atkCombos[atkIndex], spawner.transform.position, Quaternion.identity);
+        //Instantiate(enemy.atkCombos[atkIndex], spawner.transform.position, Quaternion.identity);
+
+        //NEW STUFF
+        atkCombos[atkIndex].GetComponent<MoveCombo>().moveCombo = true;
     }
 
     public void SpawnCounter()
@@ -984,20 +1047,29 @@ public class Blocker : MonoBehaviour
         enemyNeutralStance = false;
         if(retaliationAtkChance > 0)
         {
-            Debug.Log("CounterTwo");
+            //Debug.Log("CounterTwo");
             //enemySpriteHandler.sprite.material.color = Color.gray;
             enemySpriteHandler.SpriteSwap(enemy.counterAtksComboSprites[0]);
         }
 
         else
         {
-            Debug.Log("CounterOne");
+            //Debug.Log("CounterOne");
             //enemySpriteHandler.sprite.material.color = Color.green;
             enemySpriteHandler.SpriteSwap(enemy.counterAtksComboSprites[0]);
         }
 
         enemySpriteHandler.PulseSprite();
-        Instantiate(enemy.counterAtks[retaliationAtkChance], spawner.transform.position, Quaternion.identity);
+
+        //OLD
+        //Instantiate(enemy.counterAtks[retaliationAtkChance], spawner.transform.position, Quaternion.identity);
+
+        //NEW INSTANTIATE METHOD
+        //atkCombos[atkIndex].GetComponent<MoveCombo>().moveCombo = false;
+        //atkCombos[atkIndex].transform.position = spawner.position;
+
+        counterAtks[retaliationAtkChance].GetComponent<MoveCombo>().moveCombo = true;
+        //counterAtks[retaliationAtkChance].transform.rotation = spawner.rotation;
     }
 
     private void SpamFalse()
@@ -1027,6 +1099,7 @@ public class Blocker : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        
         if (!enemyDowned)
         {
             //Debug.Log("Enter" + Time.time);
@@ -1078,7 +1151,7 @@ public class Blocker : MonoBehaviour
             else if (other.gameObject.CompareTag("Retaliate2Up"))
             {
 
-                Debug.Log("Retaliate2Up");
+                //Debug.Log("Retaliate2Up");
 
                 CancelInvoke("PlayerAttack");
                 PlayerStanceReset();
@@ -1099,7 +1172,8 @@ public class Blocker : MonoBehaviour
                 PlayerStanceReset();
                 blockOnTime = true;
                 //Invoke("onTriggerFunction", 0.2f);
-            }*/
+            }
+            */
 
             else
             {
@@ -1120,7 +1194,7 @@ public class Blocker : MonoBehaviour
                 }
                 else
                 {
-                    Debug.Log("CounterSwap");
+                    //Debug.Log("CounterSwap");
                     currentSprite = enemySpriteHandler.sprite.sprite;
                     enemySpriteHandler.SpriteSwap(enemy.postAtkComboSprites[2]);
                     postAttack = true;
@@ -1171,6 +1245,9 @@ public class Blocker : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
+
+
+
         //Debug.Log("Exit" + Time.time);
 
         CancelInvoke("DeflectedTimer");
@@ -1193,6 +1270,16 @@ public class Blocker : MonoBehaviour
                 enemySpriteHandler.SpriteSwap(enemy.neutralSprite);
                 enemyNeutralStance = true;
             }
+
+
+
+            //PRACTICE INSTANTIATE//works good for the night!
+            //ATKCOMBOS
+            atkCombos[atkIndex].GetComponent<MoveCombo>().moveCombo = false;
+            atkCombos[atkIndex].transform.position = spawner.position;
+            //COUNTERATKS
+            counterAtks[retaliationAtkChance].GetComponent<MoveCombo>().moveCombo = false;
+            counterAtks[retaliationAtkChance].transform.position = spawner.position;
 
             //actual one
             atkIndex = Random.Range(0, enemy.atkCombos.Length - (enemyLives - 1));
@@ -1240,7 +1327,11 @@ public class Blocker : MonoBehaviour
 
         deflected = false;
         //Debug.Log("OntriggerExit" + Time.time);
-        Destroy(other.gameObject);
+
+        //REMOVED FOR NOW FOR INSTANTIATE REHAUL
+        //Destroy(other.gameObject);
+
+        
     }
 
     private void EnemyPostureBroken()
@@ -1290,5 +1381,35 @@ public class Blocker : MonoBehaviour
             enemyNeutralStance = true;
         }
 
+    }
+
+    private void PlayerCounterAttackFunction()
+    {
+        // If the playerAttackCounter is not null, then it is currently running.
+        if (playerAttackCounter != null)
+        {
+            // In this case, we should stop it first.
+            // Multiple PlayerCounterAttacks at the same time would cause bugs.
+            StopCoroutine(playerAttackCounter);
+        }
+
+        // Start the Coroutine, and store the reference for it.
+        playerAttackCounter = StartCoroutine(PlayerCounterAttack());
+    }
+
+    private IEnumerator PlayerCounterAttack()
+    {
+        canCounterAtk = true;
+        playerSpriteHandler.CounterAttackShineArt();
+
+        // Pause the execution of this function for "duration" seconds.
+        yield return new WaitForSeconds(counterAtkDuration);
+
+        canCounterAtk = false;
+        playerSpriteHandler.CounterAttackShineArt();
+
+
+        // Set the routine to null, signaling that it's finished.
+        playerAttackCounter = null;
     }
 }
