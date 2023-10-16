@@ -9,12 +9,15 @@ public class PlayerSpriteHandler : MonoBehaviour
     [SerializeField] SpriteRenderer preAttackArt;
     [SerializeField] SpriteRenderer postAttackArt;
     [SerializeField] SpriteRenderer currentSwordArt;
+    [SerializeField] SpriteRenderer dodgeSwordArt;
     [SerializeField] SpriteRenderer counterShine;
 
 
     //shield art references
     [SerializeField] SpriteRenderer neutralShieldArt;
     [SerializeField] SpriteRenderer shieldBlockArt;
+    [SerializeField] SpriteRenderer dodgeShieldArt;
+    [SerializeField] SpriteRenderer shieldBashArt;
     [SerializeField] SpriteRenderer currentShieldArt;
 
     private void Start()
@@ -42,7 +45,14 @@ public class PlayerSpriteHandler : MonoBehaviour
     {
         currentSwordArt.enabled = false;
         postAttackArt.enabled = true;
-        currentSwordArt= postAttackArt;
+        currentSwordArt = postAttackArt;
+    }
+
+    public void DodgeSwordArt()
+    {
+        currentSwordArt.enabled = false;
+        dodgeSwordArt.enabled = true;
+        currentSwordArt = dodgeSwordArt;
     }
 
     public void CounterAttackShineArt()
@@ -55,7 +65,7 @@ public class PlayerSpriteHandler : MonoBehaviour
         {
             counterShine.enabled = false;
         }
-        
+
     }
 
     //Block art
@@ -63,7 +73,7 @@ public class PlayerSpriteHandler : MonoBehaviour
     {
         currentShieldArt.enabled = false;
         neutralShieldArt.enabled = true;
-        currentShieldArt= neutralShieldArt;
+        currentShieldArt = neutralShieldArt;
     }
 
     public void BlockShieldArt()
@@ -71,5 +81,19 @@ public class PlayerSpriteHandler : MonoBehaviour
         currentShieldArt.enabled = false;
         shieldBlockArt.enabled = true;
         currentShieldArt = shieldBlockArt;
+    }
+
+    public void DodgeShieldArt()
+    {
+        currentShieldArt.enabled = false;
+        dodgeShieldArt.enabled = true;
+        currentShieldArt = dodgeShieldArt;
+    }
+
+    public void ShieldBashArt()
+    {
+        currentShieldArt.enabled = false;
+        shieldBashArt.enabled = true;
+        currentShieldArt = shieldBashArt;
     }
 }

@@ -5,11 +5,16 @@ using UnityEngine;
 public class CameraMove : MonoBehaviour
 {
     [SerializeField] Transform backButtonTransform;
+    [SerializeField] Transform forwardButtonTransform;
     [SerializeField] Vector3 startPos;
     [SerializeField] float speed;
     public bool backButtonPressed;
+    public bool forwardButtonPressed;
+
+    public bool returned;
 
     [SerializeField] Blocker blocker;
+    [SerializeField] PlayerSpriteHandler playerSpriteHandler;
     // Start is called before the first frame update
     void Start()
     {
@@ -24,6 +29,11 @@ public class CameraMove : MonoBehaviour
             MoveCameraBack();
         }
 
+        else if (forwardButtonPressed)
+        {
+            MoveCameraForward();
+        }
+
         else
         {
             MoveCameraToStart();
@@ -35,9 +45,21 @@ public class CameraMove : MonoBehaviour
         transform.position = Vector3.MoveTowards(transform.position, backButtonTransform.position, (speed * Time.deltaTime));
     }
 
+    public void MoveCameraForward()
+    {
+        transform.position = Vector3.MoveTowards(transform.position, forwardButtonTransform.position, (speed * Time.deltaTime));
+    }
+
     public void MoveCameraToStart()
     {
         transform.position = Vector3.MoveTowards(transform.position, startPos, (speed * Time.deltaTime));
+        if (!returned)
+        {
+            playerSpriteHandler.NeutralShieldArt();
+            playerSpriteHandler.NeutralSwordArt();
+            returned = true;
+        }
+
     }
 
     public void SetBackButtonPressedFalse()
@@ -45,5 +67,11 @@ public class CameraMove : MonoBehaviour
         backButtonPressed = false;
         blocker.dodgeSlam = false;
         
+    }
+    public void SetForwardButtonPressedFalse()
+    {
+        forwardButtonPressed = false;
+        //blocker.dodgeSlam = false;
+
     }
 }

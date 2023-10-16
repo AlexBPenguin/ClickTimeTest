@@ -209,11 +209,13 @@ public class Blocker : MonoBehaviour
             {
                 //shrink before attacking
                 enemySpriteHandler.ShrinkSpriteSize();
+                Debug.Log("Shrink Sprite");
             }
 
             else
             {
                 enemySpriteHandler.MoveSpriteUp();
+                Debug.Log("Move Sprite Up");
             }
 
         }
@@ -1059,7 +1061,7 @@ public class Blocker : MonoBehaviour
             enemySpriteHandler.SpriteSwap(enemy.counterAtksComboSprites[0]);
         }
 
-        enemySpriteHandler.PulseSprite();
+        //enemySpriteHandler.PulseSprite();
 
         //OLD
         //Instantiate(enemy.counterAtks[retaliationAtkChance], spawner.transform.position, Quaternion.identity);
@@ -1118,6 +1120,7 @@ public class Blocker : MonoBehaviour
 
             if (other.gameObject.CompareTag("StartPose"))//ground slam for now
             {
+                groundSlam = true;
                 //Debug.Log("StartPose");
                 //enemySpriteHandler.sprite.material.color = Color.red;
                 enemySpriteHandler.SpriteSwap(enemy.atkComboSprites[0]);
@@ -1200,10 +1203,17 @@ public class Blocker : MonoBehaviour
                     postAttack = true;
                     Invoke("SwitchBackToCurrentSprite", 0.15f);
                 }
+
+                if (!other.gameObject.CompareTag("Ground Slam"))
+                {
+                    enemySpriteHandler.PulseSprite();
+                }
+
+                    
             }
 
             //pulse to demonstrate attack/add some "juice"
-            enemySpriteHandler.PulseSprite();
+            //enemySpriteHandler.PulseSprite();
 
             //why is this happening again?
             //CancelInvoke("ResetBlock");
@@ -1262,6 +1272,8 @@ public class Blocker : MonoBehaviour
         else if (other.gameObject.CompareTag("FinalAtk") || other.gameObject.CompareTag("Ground Slam") || other.gameObject.CompareTag("RetaliateOne") || other.gameObject.CompareTag("Retaliate2Up"))
         {
 
+            groundSlam = false;
+
             midCombo = false;//for decrease in size animation
 
             //enemySpriteHandler.sprite.material.color = Color.white;
@@ -1294,6 +1306,8 @@ public class Blocker : MonoBehaviour
 
         if (!deflected && (!other.gameObject.CompareTag("StartPose") && !other.gameObject.CompareTag("StartPoseTwo") && !other.gameObject.CompareTag("StartPoseThree") && !other.gameObject.CompareTag("StartPoseFour")))
         {
+            groundSlam = false;
+
             //take posture damage
             playerPostureCount += 2;
             playerDisplay.SetPosture(playerPostureCount);
@@ -1323,7 +1337,7 @@ public class Blocker : MonoBehaviour
 
         blockOnTime = false;
 
-        groundSlam = false;
+        //
 
         deflected = false;
         //Debug.Log("OntriggerExit" + Time.time);

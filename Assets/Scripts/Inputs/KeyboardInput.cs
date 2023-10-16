@@ -6,6 +6,8 @@ public class KeyboardInput : MonoBehaviour
 {
     [SerializeField] CameraMove cameraMove;
     [SerializeField] Blocker blocker;
+    [SerializeField] EnemyShakeScript enemyShakeScript;
+    [SerializeField] PlayerSpriteHandler playerSpriteHandler;
     // Start is called before the first frame update
     void Start()
     {
@@ -19,7 +21,7 @@ public class KeyboardInput : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.A))
         {
             //Debug.Log("BlockButtonDown");
-            if (!blocker.enemyDowned)
+            if (!blocker.enemyDowned && cameraMove.returned)
             {
                 blocker.BlockButton();
             }
@@ -37,7 +39,7 @@ public class KeyboardInput : MonoBehaviour
             //Debug.Log("AttackButtonDown");
 
 
-            if (!blocker.enemyDowned)
+            if (!blocker.enemyDowned && cameraMove.returned)
             {
                 blocker.AttackButton();
             }
@@ -52,6 +54,23 @@ public class KeyboardInput : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.W))
         {
             //Debug.Log("UpButtonDown");
+            if (!blocker.enemyDowned && cameraMove.returned)
+            {
+                if (!cameraMove.forwardButtonPressed)
+                {
+                    cameraMove.Invoke("SetForwardButtonPressedFalse", 0.35f);
+                    //blocker.dodgeSlam = true;
+
+                    cameraMove.returned = false;
+                    playerSpriteHandler.ShieldBashArt();
+                    playerSpriteHandler.DodgeSwordArt();
+                    blocker.Flash();
+                    enemyShakeScript.ShakeMe();
+                }
+
+                cameraMove.forwardButtonPressed = true;
+
+            }
         }
         if (Input.GetKeyUp(KeyCode.W))
         {
@@ -62,15 +81,20 @@ public class KeyboardInput : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.S))
         {
             //Debug.Log("DownButtonDown");
-            if (!blocker.enemyDowned)
+            if (!blocker.enemyDowned && cameraMove.returned)
             {
                 if (!cameraMove.backButtonPressed)
                 {
-                    cameraMove.Invoke("SetBackButtonPressedFalse", 0.25f);
+                    cameraMove.Invoke("SetBackButtonPressedFalse", 0.35f);
                     blocker.dodgeSlam = true;
+
+                    cameraMove.returned = false;
+                    playerSpriteHandler.DodgeShieldArt();
+                    playerSpriteHandler.DodgeSwordArt();
                 }
 
                 cameraMove.backButtonPressed = true;
+
             }
 
 
